@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen
+        xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<PreferenceCategory
+		android:title="Choose picture upload methods">
+
+		<PreferenceScreen
+		    android:key="http_server_setup"
+			android:title="Http"/>	            
+	
+		<PreferenceScreen
+		    android:key="ftp_server_setup"
+			android:title="Ftp"/>	            
+	
+		<PreferenceScreen
+		    android:key="email_server_setup"
+			android:title="Email"/>	            
+	
+		<PreferenceScreen
+		    android:key="dropbox_setup"
+			android:title="Dropbox"/>
+
+		<PreferenceScreen
+		    android:key="boxnet_setup"
+			android:title="Box"
+			android:enabled="false"/>
+
+    <PreferenceScreen
+        android:key="sdcard_setup"
+        android:title="SDCard"/>
+							
+		<PreferenceScreen
+		    android:key="sensr_setup"
+			android:title="SENSR.NET"
+			android:summary="Go look at sensr.net - they offer free webspace for cameras. Setup with MobileWebCam http or ftp is quite easy! (I do not get paid for this!)"
+			android:enabled="true"/>	            
+	    
+	</PreferenceCategory>        
+
+</PreferenceScreen>

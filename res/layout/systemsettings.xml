@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen
+        xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<PreferenceCategory
+		android:title="Info">
+	
+		<PreferenceScreen
+		    android:key="info_open"
+			android:title="Help"
+			android:summary="Support forum thread at xda developers"
+			/>
+
+ 		<PreferenceScreen
+		    android:key="market_open"
+			android:title="Please rate this app!"
+			android:summary="Open Google Play"
+			/>
+
+  </PreferenceCategory>
+
+  <PreferenceCategory
+		android:title="Web Access">
+
+    <PreferenceScreen
+		    android:key="info_ip"
+			android:title=""
+			android:summary="On WIFI connection or VPN access server."
+			/>
+
+    <EditTextPreference
+        android:key="wifi_port"
+        android:title="Port"
+        android:summary="Port for web interface access."
+        android:defaultValue="8080"
+        android:numeric="integer"/>
+
+    <CheckBoxPreference
+      android:key="server_enabled"
+      android:title="Enable"
+      android:summary="HTTP server enabled. Access using browser or other app from your PC or other devices."
+      android:defaultValue="true"/>
+
+    <PreferenceScreen
+      android:key="nano"
+      android:title="Using nanohttpd! Read more ..."
+      android:summary="Copyright (C) 2001,2005-2011 by Jarno Elonen &lt;elonen@iki.fi&gt;\nand Copyright (C) 2010 by Konstantinos Togias &lt;info@ktogias.gr&gt;"/>
+
+    </PreferenceCategory>
+
+	<PreferenceCategory
+		android:title="System settings">
+		
+		<CheckBoxPreference
+			android:key="no_messages"
+			android:title="No status"
+			android:summary="Disable the small status messages for picture upload."
+			android:defaultValue="false"
+			/>
+	
+	    <CheckBoxPreference
+			android:key="shutter"
+			android:title="Shutter sound"
+			android:summary="Enable the Android shutter sound when taking pictures. Disable does not work on all devices."
+			android:defaultValue="true"
+			/>
+	
+	    <CheckBoxPreference
+			android:key="full_wakelock"
+			android:title="Keep screen on"
+			android:summary="Some devices will need to keep the screen on or the app will fall to sleep."
+			android:defaultValue="true"
+			/>
+			
+		<CheckBoxPreference
+			android:key="autostart"
+			android:title="Autostart"
+			android:summary="Start the app automatically after bootup. Use if you need reboot function or have an unstable device."
+			android:defaultValue="false"
+			/>
+    
+  </PreferenceCategory>
+
+</PreferenceScreen>

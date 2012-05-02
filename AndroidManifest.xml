@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      package="com.dngames.mobilewebcam"
+      android:installLocation="auto"
+      android:versionCode="73"
+      android:versionName="2.45">
+    <application
+    	android:icon="@drawable/icon"
+    	android:label="@string/app_name">
+<!--        	android:debuggable="true"> -->
+    	
+        <activity android:name=".MobileWebCam"
+                  android:label="@string/app_name"
+                  android:launchMode="singleTop"
+                  android:screenOrientation="landscape">
+          	<supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <activity android:name=".TakeHiddenPicture"
+                  android:label="Taking Picture"
+                  android:launchMode="singleTop"
+                  android:theme="@android:style/Theme.Translucent.NoTitleBar">
+          	<supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+        </activity>
+
+      <service android:name="com.dngames.mobilewebcam.PhotoService"/>
+
+		<activity
+            android:label="@string/webcam_settings"
+            android:name=".SettingsTabActivity">
+          <supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+        </activity>
+        
+		<activity
+            android:label="@string/webcam_settings"
+            android:name=".MobileWebCamSettings">
+          <supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+        </activity>
+      <activity
+            android:label="@string/activity_settings"
+            android:name=".ActivitySettings">
+          <supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+        </activity>
+      
+        <activity
+            android:label="@string/upload_setup"
+            android:name=".UploadSetup">
+          <supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+        </activity>
+
+        <activity
+            android:label="@string/webcam_settings"
+            android:name=".FTPSettings">
+          <supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+        </activity>
+
+        <activity
+          android:label="@string/sdcard_settings"
+          android:name=".SDCardSettings">
+        <supports-screens android:smallScreens="true"
+                    android:normalScreens="true"
+                    android:largeScreens="true"
+                    android:anyDensity="true"/>
+      </activity>
+      <activity
+            android:label="@string/webcam_settings"
+            android:name=".SystemSettings">
+          <supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+        </activity>
+        
+      <activity
+            android:label="Bootup Start Mobilewebcam"
+            android:name=".StartMobileWebCamAction"
+            android:exported="true">
+          <supports-screens android:smallScreens="true"
+                      android:normalScreens="true"
+                      android:largeScreens="true"
+                      android:anyDensity="true"/>
+        </activity>        
+        
+		<receiver android:enabled="true" android:name=".BootUpReceiver"
+		        android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+		
+		        <intent-filter>
+		                <action android:name="android.intent.action.BOOT_COMPLETED" />
+		                <category android:name="android.intent.category.DEFAULT" />
+		        </intent-filter>
+		</receiver>
+
+      <receiver android:name=".SMSReceiver">
+        <intent-filter>
+          <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+        </intent-filter>
+      </receiver>
+
+      <receiver android:name=".ControlReceiver">
+        <intent-filter>
+          <action android:name="com.dngames.mobilewebcam.START" />
+          <action android:name="com.dngames.mobilewebcam.STOP" />
+        </intent-filter>
+      </receiver>
+      <receiver android:name=".PhotoAlarmReceiver"/>
+
+      <service android:name=".MobileWebCamHttpService"/>
+
+      <activity android:name="com.google.ads.AdActivity"
+              android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"/>
+              
+      <!-- The application's publisher ID assigned by AdMob -->
+      <meta-data android:value="a14d4ff1701dc12" android:name="ADMOB_PUBLISHER_ID"/>
+
+    </application>
+    <uses-sdk android:minSdkVersion="3" android:targetSdkVersion="15"/>
+  
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />  
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+  <uses-permission android:name="android.permission.DISABLE_KEYGUARD"/>
+  <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+</manifest> 

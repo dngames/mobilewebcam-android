@@ -1,0 +1,330 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen
+        xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<PreferenceCategory
+		android:title="Image">
+    
+	<ListPreference
+           android:key="picture_size_sel"
+           android:defaultValue="1"
+           android:title="Picture size"
+           android:summary="Use this to send smaller or larger pictures (WIFI, mobile flatrate or few refreshes)."
+           android:entries="@array/entries_list_picture_size"
+           android:entryValues="@array/entryvalues_list_picture_size"
+           android:dialogTitle="Picture size"/>
+	
+	<com.dngames.mobilewebcam.SeekBarPreference
+			android:key="picture_compression"
+	        android:title="Image Quality"
+	        android:summary="Modify image quality vs. data size (compression)."
+	        android:defaultValue="85"
+	        android:text=" %"
+	        android:max="100"
+	        />	
+
+    <CheckBoxPreference
+      android:key="picture_autofocus"
+      android:title="Use Autofocus"
+      android:summary="Enable this to use the slow camera autofocus."
+      android:defaultValue="false"
+		/>
+	
+	<PreferenceScreen
+		xmlns:android="http://schemas.android.com/apk/res/android"
+		android:title="Rotate Images">
+		
+    	<CheckBoxPreference
+	      android:key="picture_autorotate"
+	      android:title="Automatic Rotatation"
+	      android:summary="Try to detect device orientation and rotate pictures to match automatically."
+	      android:defaultValue="false"
+			/>
+	    
+		<CheckBoxPreference
+	      android:key="picture_rotate"
+	      android:title="Rotate pictures"
+	      android:summary="Enable this if you want to force your pictures to portrait orientation (auto off)."
+	      android:defaultValue="false"
+			/>
+
+		<CheckBoxPreference
+	      android:key="picture_flip"
+	      android:title="Flip pictures"
+	      android:summary="Enable this if you want to flip your pictures upside down. Some front cameras seem to need this!"
+	      android:defaultValue="false"
+			/>
+				
+	</PreferenceScreen>
+			
+	<PreferenceScreen
+		xmlns:android="http://schemas.android.com/apk/res/android"
+		android:title="Image Imprint">
+
+		<PreferenceCategory
+			android:title="Date and Time">
+			
+			<EditTextPreference
+			android:key="imprint_datetimeformat"
+			android:title="Date and Time"
+			android:summary="Print current date and time (see SimpleDateFormat, empty for nothing) on every picture."
+	        android:inputType="text"
+			android:defaultValue="yyyy/MM/dd   HH:mm:ss"
+	        android:scrollHorizontally="true"
+	        android:singleLine="true"
+			/>
+			
+			<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="datetime_color"
+				android:title="Color"
+				android:summary="Print text in this color if enabled."
+	            android:defaultValue="#FFFFFFFF"/> 
+
+			<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="datetime_shadowcolor"
+				android:title="Shadow Color"
+				android:summary="Print a shadow for info texts in this color to improve readability."
+	            android:defaultValue="#FF000000"/>
+
+      <com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="datetime_backcolor"
+				android:title="Background Color"
+				android:summary="Draw a colored background under all info texts to improve readability."
+	            android:defaultValue="#00000000"/>
+      
+		<CheckBoxPreference
+	      android:key="datetime_fillline"
+	      android:title="Background Line"
+	      android:summary="Draw a full filled line of background instead of the area under the info texts."
+	      android:defaultValue="true"
+			/>
+
+      <com.dngames.mobilewebcam.SeekBarPreference
+					android:key="datetime_x"
+			        android:title="Horizontal position"
+			        android:summary="Move text position horizontally."
+			        android:defaultValue="85"
+			        android:text=" %"
+			        android:max="100"
+			        />
+
+			<com.dngames.mobilewebcam.SeekBarPreference
+					android:key="datetime_y"
+			        android:title="Vertical position"
+			        android:summary="Move text position vertically."
+			        android:defaultValue="97"
+			        android:text=" %"
+			        android:max="100"
+			        />
+			
+		</PreferenceCategory>
+		
+		<PreferenceCategory
+		    android:title="Battery/Temperature">
+			
+		    	<EditTextPreference
+				android:key="imprint_statusinfo"
+				android:title="Battery level/Temperature"
+				android:summary="Print battery level and temperature."
+		        android:inputType="text"
+				android:defaultValue="Battery %03d%% %3.1f°C"
+		        android:scrollHorizontally="true"
+		        android:singleLine="true"
+				/>
+
+			<com.dngames.mobilewebcam.SeekBarPreference
+					android:key="statusinfo_x"
+			        android:title="Horizontal position"
+			        android:summary="Move text position horizontally."
+			        android:defaultValue="85"
+			        android:text=" %"
+			        android:max="100"
+			        />
+
+			<com.dngames.mobilewebcam.SeekBarPreference
+					android:key="statusinfo_y"
+			        android:title="Vertical position"
+			        android:summary="Move text position vertically."
+			        android:defaultValue="92"
+			        android:text=" %"
+			        android:max="100"
+			        />
+			
+		</PreferenceCategory>
+		
+		<PreferenceCategory
+		    android:title="GPS">
+			
+			 <CheckBoxPreference
+				android:key="imprint_gps"
+				android:title="Position"
+				android:summary="Grab and print current gps position."
+			    android:defaultValue="false"
+				/>
+
+			 <CheckBoxPreference
+				android:key="imprint_location"
+				android:title="Location"
+				android:summary="Print current gps location as address instead of coordinates!"
+			    android:defaultValue="false"
+				/>
+	 
+			<com.dngames.mobilewebcam.SeekBarPreference
+					android:key="gps_x"
+			        android:title="Horizontal position"
+			        android:summary="Move text position horizontally."
+			        android:defaultValue="85"
+			        android:text=" %"
+			        android:max="100"
+			        />
+
+			<com.dngames.mobilewebcam.SeekBarPreference
+					android:key="gps_y"
+			        android:title="Vertical position"
+			        android:summary="Move text position vertically."
+			        android:defaultValue="87"
+			        android:text=" %"
+			        android:max="100"
+			        />			
+	
+		</PreferenceCategory>
+		
+		<PreferenceCategory
+		android:title="Info">
+
+		  <EditTextPreference
+		            android:key="imprint_text"
+		            android:title="Text"
+		            android:summary="Print this text on every picture."
+		            android:defaultValue="mobilewebcam"
+		            android:inputType="text"
+		            android:scrollHorizontally="true"
+		            android:singleLine="true"
+		            />
+			
+			<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="text_color"
+				android:title="Color"
+				android:summary="Print text in this color if enabled." 
+	            android:defaultValue="#FFFFFFFF"/> 
+
+			<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="text_shadowcolor"
+				android:title="Shadow Color"
+				android:summary="Print a shadow for the text in this color to make better readable." 
+	            android:defaultValue="#FF000000"/>
+
+      <com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="text_backcolor"
+				android:title="Background Color"
+				android:summary="Draw a colored background under the text to improve readability."
+	            android:defaultValue="#00000000"/>
+
+		<CheckBoxPreference
+	      android:key="text_fillline"
+	      android:title="Background Line"
+	      android:summary="Draw a full filled line of background instead of the area under the text."
+	      android:defaultValue="true"
+			/>
+      
+      <com.dngames.mobilewebcam.SeekBarPreference
+					android:key="text_x"
+			        android:title="Horizontal position"
+			        android:summary="Move text position horizontally."
+			        android:defaultValue="15"
+			        android:text=" %"
+			        android:max="100"
+			        />
+
+			<com.dngames.mobilewebcam.SeekBarPreference
+					android:key="text_y"
+			        android:title="Vertical position"
+			        android:summary="Move text position vertically."
+			        android:defaultValue="3"
+			        android:text=" %"
+			        android:max="100"
+			        />
+        	
+		</PreferenceCategory>
+		<PreferenceCategory
+			android:title="Stamp Picture">
+
+			<CheckBoxPreference
+			android:key="imprint_picture"
+			android:title="Picture"
+			android:summary="Print your custom image sdcard/MobileWebCam/imprint.png onto the cam pic."
+			android:defaultValue="false"
+			/>
+	
+		</PreferenceCategory>
+	</PreferenceScreen>
+	
+<!-- 	<PreferenceScreen
+		xmlns:android="http://schemas.android.com/apk/res/android"
+		android:title="Photo Effects">
+		
+		<PreferenceCategory
+			android:title="Experimental">
+			
+    		<PreferenceScreen
+				android:title="Please note!"
+				android:summary="These fx are only experimental for now and working only for small resolution pictures. Also it can be slow on your device!"
+				android:enabled="false"/>
+    		
+		    <PreferenceScreen
+		      android:key="info_imagemagick"
+		      android:title="Image Magick"
+		      android:summary="Using ImageMagick®! Read more ..."/>		
+    			    
+			<CheckBoxPreference
+				android:key="filter_picture"
+				android:title="Enable Filter"
+				android:summary="Apply the selected filter on your photos before upload."
+				android:defaultValue="false"
+				/>		
+	    			    
+			<ListPreference
+	           android:key="filter_sel"
+	           android:defaultValue="0"
+	           android:title="Photo Filter"
+	           android:summary="Select one to apply a filter effect after taking a picture."
+	           android:entries="@array/entries_list_filter"
+	           android:entryValues="@array/entryvalues_list_filter"
+	           android:dialogTitle="Select Filter to Apply"/>
+		    
+		</PreferenceCategory>
+		
+	</PreferenceScreen> -->
+	
+	<PreferenceScreen
+		xmlns:android="http://schemas.android.com/apk/res/android"
+		android:title="Custom Picture Size">
+
+	    <EditTextPreference
+            android:key="picture_size_custom_w"
+            android:title="Width"
+            android:summary="Enter the width you would like to have the final picture scaled to. Please choose Custom in size settings! Consumes more memory!"
+            android:defaultValue="320"
+            android:inputType="number"
+            android:singleLine="true"
+	            />
+  	<EditTextPreference
+            android:key="picture_size_custom_h"
+            android:title="Height"
+            android:summary="Enter the height you would like to have the final picture scaled to. Please choose Custom in size settings! Consumes more memory!"
+            android:defaultValue="240"
+            android:inputType="number"
+            android:singleLine="true"
+	            />	
+	</PreferenceScreen>
+		
+    <CheckBoxPreference
+		android:key="store_gps"
+		android:title="GPS"
+		android:summary="Add GPS coordinates to picture files (EXIF)."
+	    android:defaultValue="true"/>	
+
+  </PreferenceCategory>	
+		
+</PreferenceScreen>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fillViewport="true" >
+
+       <LinearLayout
+	    	android:id="@+id/colordialoglinear"
+           android:layout_width="match_parent"
+           android:layout_height="match_parent"
+           android:orientation="vertical">
+
+           <TextView
+               android:id="@+id/textView1"
+               android:layout_width="wrap_content"
+               android:layout_height="wrap_content"
+               android:layout_margin="10dp"
+               android:gravity="center_horizontal"
+               android:text="Select color in circle. Tap center for black and white!"
+               android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <SeekBar
+            android:id="@+id/alphaslider"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:max="255"
+            android:progress="255"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="10dp"
+            android:layout_marginLeft="30dp"
+            android:layout_marginRight="30dp"/>
+
+       <LinearLayout
+	        android:id="@+id/linearLayout1"
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:layout_margin="10dp"
+	        android:orientation="horizontal" >
+	
+	        <TextView
+	            android:id="@+id/textView2"
+	            android:layout_width="wrap_content"
+	            android:layout_height="wrap_content"
+	            android:layout_weight="1"
+	            android:text="Hex Color #"
+	            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <EditText
+	            android:id="@+id/colorpickercolorcode"
+	            android:layout_width="wrap_content"
+	            android:layout_height="wrap_content"
+	            android:layout_weight="1"
+				android:capitalize="characters"
+				android:inputType="textCapCharacters"
+				android:maxLength="8"
+	            android:singleLine="true" />
+	    </LinearLayout>            
+     </LinearLayout>
+</ScrollView>
