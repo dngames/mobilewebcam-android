@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:myapp="http://schemas.android.com/apk/res/com.dngames.mobilewebcam"
+  android:layout_width="wrap_content"
+  android:layout_height="wrap_content"
+    android:orientation="vertical" android:layout_gravity="center" android:gravity="center">
+
+	<LinearLayout
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content" android:orientation="vertical">
+		
+		<com.dngames.mobilewebcam.Preview android:id="@+id/preview" android:visibility="invisible" android:layout_gravity="center" android:layout_height="480px" android:layout_marginTop="10dip" android:layout_width="640px" android:layout_margin="10dip"></com.dngames.mobilewebcam.Preview>
+		
+    </LinearLayout>
+
+	<LinearLayout
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content" android:orientation="vertical">
+		
+		<com.dngames.mobilewebcam.DrawOnTop android:id="@+id/drawontop" android:visibility="invisible" android:layout_gravity="center" android:layout_height="480px" android:layout_marginTop="10dip" android:layout_width="640px" android:layout_margin="10dip"></com.dngames.mobilewebcam.DrawOnTop>
+		
+    </LinearLayout>
+	    	    
+	    <TextView android:id="@+id/status"
+    android:text="Starting ..." 
+    android:shadowColor="#FF000000" 
+    android:textColor="#FFFF0000" 
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_centerHorizontal="true"
+    android:layout_alignParentBottom="true" android:layout_marginBottom="10dip" android:textSize="20dip"/>
+
+  <TextView android:id="@+id/motion"
+  	android:visibility="visible"
+    android:text="No motion detected!" 
+    android:shadowColor="#FF000000" 
+    android:textColor="#FFFF0000" 
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_centerHorizontal="true"
+    android:layout_above="@id/status" android:layout_marginBottom="10dip" android:textSize="20dip"/>
+
+    <Button
+        android:id="@+id/configure"
+        android:background="@android:drawable/ic_menu_more"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+    	android:layout_alignParentRight="true"
+  	    android:layout_alignParentTop="true"
+  	    android:visibility="gone"
+        android:text="" />
+  
+</RelativeLayout>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen
+        xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<PreferenceCategory
+		android:title="Activity">
+
+    <EditTextPreference
+            android:key="cam_refresh"
+            android:title="Refresh Time"
+            android:summary="How many seconds to wait after picture upload."
+            android:defaultValue="60"
+            android:numeric="integer"
+            />
+
+    <ListPreference
+             android:key="camera_mode"
+             android:defaultValue="1"
+             android:title="Operation Mode"
+             android:summary="Camera running manual (tap on screen for picture), normal, in background (waking up) the app or take pictures hidden with normal phone usage."
+             android:entries="@array/entries_list_camera_mode"
+             android:entryValues="@array/entryvalues_list_camera_mode"
+             android:dialogTitle="Camera Mode"/>
+
+		<com.dngames.mobilewebcam.TimePickerPreference
+		      android:key="activity_starttime"
+	           android:summary="Allow activity (upload) only from this time every day."
+		       android:title="Daily Activity Start"
+		       android:defaultValue="00:00"/>
+
+		<com.dngames.mobilewebcam.TimePickerPreference
+		      android:key="activity_endtime"
+	           android:summary="End activity (upload) at this time every day. Set same as start for always."
+		       android:title="Daily Activity End"
+		       android:defaultValue="24:00"/>
+		
+			<CheckBoxPreference
+				android:key="night_detect"
+				android:title="No Night Uploads"
+				android:summary="Try to not upload nearly black (night) pictures. When enabled consumes a little more battery power!"
+				android:defaultValue="false"
+				/>
+            
+      		</PreferenceCategory>
+	            
+	    <CheckBoxPreference
+			android:key="sms_commands"
+			android:title="SMS Commands"
+			android:summary="Receive SMS commands 'photo', 'start', 'stop', 'reboot' and 'refresh NUMBER' for camera control!"
+			android:defaultValue="false"
+			/>	
+			
+		<PreferenceCategory
+			android:title="Motion Detection">
+	    
+		    <CheckBoxPreference
+				android:key="motion_detect"
+				android:title="Detect Motion"
+				android:summary="Take pictures only when motion has been detected."
+				android:defaultValue="false"
+				/>
+		    
+			<com.dngames.mobilewebcam.SeekBarPreference
+				android:key="motion_change"
+		        android:title="Color Change"
+		        android:summary="Color change required to detect"
+		        android:defaultValue="15"
+		        android:text=""
+		        android:max="255"
+		        />	
+		    
+			<com.dngames.mobilewebcam.SeekBarPreference
+				android:key="motion_value"
+		        android:title="Motion Trigger"
+		        android:summary="Detect only large image changes or even small ones."
+		        android:defaultValue="25"
+		        android:text=""
+		        android:max="100"
+		        />	
+		    		    
+      	</PreferenceCategory>
+	    
+		<PreferenceCategory
+			android:title="Start">
+		
+			<CheckBoxPreference
+				android:key="cam_autostart"
+				android:title="Take pictures"
+				android:summary="Camera enabled on app start. Tap on screen to start if unchecked. Uncheck if you want to start auto mode manually."
+				android:defaultValue="true"
+				/>
+				
+		    <EditTextPreference
+	            android:key="reboot"
+	            android:title="Auto Reboot *ROOT only*"
+	            android:summary="This requires a rooted device! Reboot the device and app after the entered number of pictures! Some camera drivers crash after taking a number of pictures. Select autostart too! Allow superuser rights before!"
+	            android:defaultValue="0"
+	            android:numeric="integer"
+	            />
+      	</PreferenceCategory>
+	    		
+</PreferenceScreen>

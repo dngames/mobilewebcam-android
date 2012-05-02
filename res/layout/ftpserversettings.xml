@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:title="Configure FTP Upload">
+
+	<CheckBoxPreference
+		android:key="ftpserver_upload"
+		android:title="Enable"
+		android:summary="Upload pictures to FTP server when enabled."
+		android:defaultValue="false"
+		/>
+
+  <EditTextPreference
+          android:key="ftp_every"
+          android:title="Frequency"
+          android:summary="Skip upload of pictures. 1 = upload every picture"
+          android:defaultValue="1"
+          android:inputType="number"
+          android:singleLine="true"
+	            />
+
+  <PreferenceCategory
+		android:title="Picture Filename Setup">
+		
+  	<EditTextPreference
+            android:key="ftpserver_defaultname"
+            android:title="Default name"
+            android:summary="Your picture filename."
+            android:defaultValue="current.jpg"
+            android:inputType="textUri"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            />
+		
+		<CheckBoxPreference
+			android:key="cam_filenames"
+			android:title="Numbered"
+			android:summary="Upload numbered pictures instead of same filename for every picture."
+			android:defaultValue="true"
+			/>
+
+		<CheckBoxPreference
+			android:key="cam_datetime"
+			android:title="Date and time"
+			android:summary="Attach date and time to uploaded picture file names."
+			android:defaultValue="false"
+			/>
+			
+	  <EditTextPreference
+            android:key="ftp_keepoldpics"
+            android:title="Rename old pictures"
+            android:summary="Specify the number of old pictures to keep"
+            android:defaultValue="0"
+            android:inputType="number"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+	            />
+		
+	</PreferenceCategory>
+		
+	<PreferenceCategory
+		android:title="FTP Server Setup">
+
+  <EditTextPreference
+            android:key="ftpserver_url"
+            android:title="Server address"
+            android:summary="Your webcam picture ftp server adress."
+            android:defaultValue="WWW.YOURDOMAIN.COM"
+            android:inputType="textUri"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            />
+            
+  <EditTextPreference
+            android:key="ftp_port"
+            android:title="Server port"
+            android:summary="ftp server port number."
+            android:defaultValue="21"
+            android:inputType="number"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+	            />            
+
+  <EditTextPreference
+            android:key="ftp_dir"
+            android:title="Directory"
+            android:summary="Directory on server for your pictures."
+            android:defaultValue="/WEBCAM/PICUPLOAD/"
+            android:inputType="textUri"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            />
+
+  <EditTextPreference
+            android:key="ftp_login"
+            android:title="Login"
+            android:summary="Your login to your ftp server."
+            android:defaultValue=""
+            android:inputType="text"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+	            />
+
+  <EditTextPreference
+            android:key="ftp_password"
+            android:title="Password"
+            android:summary="Your password."
+            android:defaultValue=""
+            android:inputType="textPassword"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+	            />
+	            
+		<CheckBoxPreference
+			android:key="cam_passiveftp"
+			android:title="Passive Mode"
+			android:summary="Use passive ftp mode."
+			android:defaultValue="true"
+			/>	            
+	            
+	</PreferenceCategory>
+
+</PreferenceScreen>
