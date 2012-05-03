@@ -45,9 +45,6 @@ public class ActivitySettings extends PreferenceActivity implements OnSharedPref
 			modelist.setEntries(getResources().getStringArray(R.array.entries_list_camera_mode_no_hiddenmode));
 			modelist.setEntryValues(getResources().getStringArray(R.array.entryvalues_list_camera_mode_no_hiddenmode));
 		}
-
-//***        getPreferenceManager().findPreference("browser_open").setSummary(current_url);
-//***        getPreferenceManager().findPreference("website_refresh").setSummary(WebsiteLiveWallpaperSettings.this.getString(R.string.refresh_settings_summary, getPreferenceManager().getSharedPreferences().getString("website_refresh", "0")));
 	 }
 
      public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
