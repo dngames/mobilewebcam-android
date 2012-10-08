@@ -80,7 +80,23 @@
 		        />	
 		    		    
       	</PreferenceCategory>
-	    
+      	
+		<PreferenceCategory
+			android:title="Other Triggers">
+			
+		  <EditTextPreference
+	            android:key="broadcast_activation"
+	            android:title="Wait for Android Broadcast"
+	            android:summary="Register for this broadcast and take a picture when received. Be careful, read about the broadcasts/intents in Android SDK before using."
+	            android:defaultValue="android.intent.action.SCREEN_ON"
+	            android:hint = "google for android broadcasts"
+	            android:inputType="text"
+	            android:scrollHorizontally="true"
+	            android:singleLine="true"
+	            />
+		    		    				
+      	</PreferenceCategory>
+		    	    
 		<PreferenceCategory
 			android:title="Start">
 		

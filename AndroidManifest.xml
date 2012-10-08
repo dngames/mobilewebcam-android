@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       package="com.dngames.mobilewebcam"
       android:installLocation="auto"
-      android:versionCode="73"
-      android:versionName="2.45">
+      android:versionCode="75"
+      android:versionName="2.47">
     <application
     	android:icon="@drawable/icon"
     	android:label="@string/app_name">
@@ -35,7 +35,8 @@
         </activity>
 
       <service android:name="com.dngames.mobilewebcam.PhotoService"/>
-
+      <service android:name="com.dngames.mobilewebcam.CustomReceiverService"/>
+      
 		<activity
             android:label="@string/webcam_settings"
             android:name=".SettingsTabActivity">
@@ -70,7 +71,6 @@
                       android:largeScreens="true"
                       android:anyDensity="true"/>
         </activity>
-
         <activity
             android:label="@string/webcam_settings"
             android:name=".FTPSettings">

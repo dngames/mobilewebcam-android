@@ -781,9 +781,12 @@ public class WorkImage implements Runnable, LocationListener
 
 				Log.v("MobileWebCam", "Workimage: imprint done");			
 			
-				mTextUpdater.SetPreview(gBmp);
-				
-				Log.v("MobileWebCam", "Workimage: preview set");							
+				if(MobileWebCam.gIsRunning)
+				{
+					mTextUpdater.SetPreview(gBmp);
+					
+					Log.v("MobileWebCam", "Workimage: preview set");
+				}
 
 				try
 				{
@@ -800,8 +803,9 @@ public class WorkImage implements Runnable, LocationListener
 				
 				mData = out.toByteArray();
 			}
-			else
+			else if(MobileWebCam.gIsRunning)
 			{
+				// set fallback preview image
 				Bitmap smalltmp = Bitmap.createBitmap(100, 100, Bitmap.Config.RGB_565);
 				if(smalltmp != null)
 				{

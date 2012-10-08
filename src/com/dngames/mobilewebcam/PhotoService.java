@@ -20,6 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -34,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.net.ftp.FTPClient;
 
 import android.app.IntentService;
+import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -96,6 +98,7 @@ public class PhotoService// implements SurfaceHolder.Callback
 				cam.startPreview();
 				cam.stopPreview();
 				cam.release();
+				System.gc();
 				Preview.mPhotoLock.set(false);
 				return true;
 			}
@@ -147,6 +150,7 @@ public class PhotoService// implements SurfaceHolder.Callback
 						camera.setPreviewCallback(null);
 						camera.stopPreview();
 						camera.release();
+						System.gc();
 						mTextUpdater.JobFinished();
 					} });
 			}
@@ -314,10 +318,12 @@ public class PhotoService// implements SurfaceHolder.Callback
 					{
 						if(mCamera != null)
 						{
-							mCamera.setPreviewCallback(null);
-							mCamera.stopPreview();
-							mCamera.release();
+							Camera c = mCamera;
 							mCamera = null;
+							c.setPreviewCallback(null);
+							c.stopPreview();
+							c.release();
+							System.gc();
 						}
 						
 						Log.i("MobileWebCam", "takePicture finished");
@@ -604,6 +610,7 @@ public class PhotoService// implements SurfaceHolder.Callback
 		// important to release it when the activity is paused.
 		if(mCamera != null)
 		{
+			mCamera = null;
 			mCamera.setPreviewCallback(null);
 			mCamera.stopPreview();
 			mCamera.release();
