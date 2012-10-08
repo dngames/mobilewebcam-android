@@ -19,6 +19,7 @@ import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -93,9 +94,12 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	private Handler mHandler = new Handler();
 
 	private CamActivity mActivity = null;
+
 	private PhotoSettings mSettings = null;
 
 	private long mSetupServerMessage_lasttime = 0;
+	
+	public static Preview gPreview = null;
 	
 	public static AtomicBoolean mPhotoLock = new AtomicBoolean(false);
 	public static long mPhotoLockTime = 0;
@@ -277,6 +281,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			}
 		};
 	};
+	
+	private OrientationEventListener mOrientationListener = null;
     
 	public Preview(Context context, AttributeSet attrs)
 	{
@@ -284,7 +290,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
         
         mActivity = (CamActivity)context;
         
-        OrientationEventListener orientationListener = new OrientationEventListener(mActivity, SensorManager.SENSOR_DELAY_NORMAL)
+        mOrientationListener = new OrientationEventListener(context, SensorManager.SENSOR_DELAY_NORMAL)
         {
             @Override
             public void onOrientationChanged(int orientation)
@@ -292,7 +298,6 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
             	gOrientation = orientation;
             }
         };
-        orientationListener.enable();        
 		
 		// Install a SurfaceHolder.Callback so we get notified when the
 		// underlying surface is created and destroyed.
@@ -330,6 +335,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
     public void onResume()
 	{
 		gPreview = this;
+        mOrientationListener.enable();        
 
 		if(mSettings.mMode == Mode.NORMAL && mSettings.mMobileWebCamEnabled)
 		{
@@ -344,6 +350,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	
 	public void onPause()
 	{
+        mOrientationListener.disable();        
 		mHandler.removeCallbacks(mPostPicture);
 
 // TODO: check if camera is still locked!
@@ -366,6 +373,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 
 	public void onDestroy()
 	{
+		mOrientationListener = null;
 		mHandler.removeCallbacks(mPostPicture);
 
 		if(mCamera != null)
@@ -413,6 +421,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 								camera.setPreviewCallback(null);
 								camera.stopPreview();
 								camera.release();
+								
+								System.gc();
 							}
 							
 							mPhotoLock.set(false);
@@ -486,7 +496,17 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 					if(mSettings.mMode != Mode.HIDDEN)
 					{
 						// show preview window
-						mCamera.startPreview();
+						try
+						{
+							mCamera.startPreview();
+						}
+						catch(RuntimeException e)
+						{
+							if(e.getMessage() != null)
+								MobileWebCam.LogE(e.getMessage());
+							else
+								e.printStackTrace();
+						}
 					}
 					
 					if(mSettings.mMotionDetect)
@@ -520,12 +540,12 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 
 		if(mCamera != null && mSettings.mMobileWebCamEnabled)
 		{
-			if(mSettings.mMode != Mode.MANUAL && mSettings.mMode != Mode.BACKGROUND && mSettings.mMode != Mode.HIDDEN)
+			if(mSettings.mMode == Mode.NORMAL)
 			{
 				mHandler.removeCallbacks(mPostPicture);
 				mHandler.postDelayed(mPostPicture, 5000);
 			}
-			else if(mSettings.mMode == Mode.BACKGROUND)
+			else if(mSettings.mMode == Mode.BROADCASTRECEIVER || mSettings.mMode == Mode.BACKGROUND)
 			{
 				// from takehiddenpicture
 				TakePhoto();
@@ -916,6 +936,10 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			time.setTimeInMillis(System.currentTimeMillis());
 			alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
 		}
+		else if(mSettings.mMode == Mode.BROADCASTRECEIVER)
+		{
+			CustomReceiverService.start(mActivity);
+		}
 	}
 	
 	public void offline(boolean setofflinepicture)
@@ -928,6 +952,10 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			Intent intent = new Intent(mActivity, PhotoAlarmReceiver.class);
 			PendingIntent pendingIntent = PendingIntent.getBroadcast(mActivity, 0, intent, 0);
 			alarmMgr.cancel(pendingIntent);
+		}
+		else if(mSettings.mMode == Mode.BROADCASTRECEIVER)
+		{
+			CustomReceiverService.stop(mActivity);
 		}
 		
 		if(setofflinepicture)
@@ -1041,11 +1069,12 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		}
 	}
 	
-	public static Preview gPreview = null;
-	
 	@Override
 	public void SetPreview(Bitmap image)
 	{
+		if(!MobileWebCam.gIsRunning)
+			return;
+		
 		mPreviewBitmapLock.set(true);
 
 		if(mPreviewBitmap != null)
@@ -1095,8 +1124,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
         String v = prefs.getString("camera_mode", "1");
         if(v.length() < 1 || v.length() > 9)
         	v = "1";
-        int mode = Integer.parseInt(v);
-		if(mode == 3 && mSettings.mRefreshDuration > 10000)
+        PhotoSettings.Mode mode = Mode.values()[Integer.parseInt(v)];
+		if(mode == Mode.BACKGROUND || mode == Mode.BROADCASTRECEIVER)
 		{
 			if(!MobileWebCam.gIsRunning)
 				mActivity.finish();

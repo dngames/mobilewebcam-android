@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Debug;
 import android.util.Log;
 import android.widget.TextView;
 import android.content.pm.PackageInfo;
@@ -126,7 +127,7 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			return res;
 		}
 		
-		boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || MobileWebCam.gInSettings || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);		
+		boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || MobileWebCam.gInSettings || mSettings.mMode == Mode.BROADCASTRECEIVER || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);		
 		String info_app = getVersionNumber(mContext);
 		String info_device = android.os.Build.MODEL + " " + android.os.Build.VERSION.RELEASE + " " + android.os.Build.DISPLAY;		
 		
@@ -154,8 +155,13 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[1];
 		else if(mSettings.mMode == Mode.BACKGROUND)
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[2];
-		else
+		else if(mSettings.mMode == Mode.HIDDEN)
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[3];
+		else if(mSettings.mMode == Mode.BROADCASTRECEIVER)
+			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[4];
+		float usedMegs = (float)Debug.getNativeHeapAllocatedSize() / (float)1048576L;
+		msg += String.format("<br>Memory used: %.2f MB", usedMegs);
+		
 		
 		msg += "<hr>";
 		
@@ -303,7 +309,7 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 		@Override
 		public int available() throws IOException
 		{
-			boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);
+			boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || mSettings.mMode == Mode.BROADCASTRECEIVER || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);
 			if(!active)
 				return -1;
 			

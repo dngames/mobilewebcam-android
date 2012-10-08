@@ -76,7 +76,7 @@ public class CamActivity extends Activity
     	if(mWakeLock == null)
     	{
 	        PowerManager pm = (PowerManager)CamActivity.this.getSystemService(Context.POWER_SERVICE);
-	        if(mSettings.mMode == Mode.BACKGROUND)
+	        if(mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.BROADCASTRECEIVER)
 	        	mWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK|PowerManager.ACQUIRE_CAUSES_WAKEUP|PowerManager.ON_AFTER_RELEASE, "MobileWebCam");
 	        else if(mSettings.mFullWakeLock)
 	        	mWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "MobileWebCam");
@@ -85,7 +85,8 @@ public class CamActivity extends Activity
 	        mWakeLock.acquire();
     	}
         
-        mPreview.onResume();
+    	if(mPreview != null)
+    		mPreview.onResume();
     }
     
     @Override
@@ -93,11 +94,15 @@ public class CamActivity extends Activity
     {
     	super.onPause();
     	
-		if(mWakeLock.isHeld())
-			mWakeLock.release();
-		mWakeLock = null;
-		
-		mPreview.onPause();
+    	if(mPreview != null)
+    		mPreview.onPause();
+
+/*    	if(mWakeLock != null)
+    	{
+			if(mWakeLock.isHeld())
+				mWakeLock.release();
+			mWakeLock = null;
+    	}*/
     }
     
     @Override

@@ -58,10 +58,6 @@ public class TakeHiddenPicture extends CamActivity
 	        getWindow().setAttributes(lp);
 */
 //	        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-	        KeyguardManager mKeyguardManager = (KeyguardManager)getSystemService(KEYGUARD_SERVICE);
-	        mLock = mKeyguardManager.newKeyguardLock("MobileWebCam");
-	        mLock.disableKeyguard();	        
         }
         
         mLayout = R.layout.hiddenlayout;
@@ -86,14 +82,11 @@ public class TakeHiddenPicture extends CamActivity
         lp.screenBrightness = 0.0f;
         getWindow().setAttributes(lp);
 */
-    	if(!MobileWebCam.gIsRunning)
+    	if(!MobileWebCam.gIsRunning && !MobileWebCam.gInSettings && mLock == null)
     	{
-	    	if(mLock == null)
-	    	{
-		        KeyguardManager mKeyguardManager = (KeyguardManager)getSystemService(KEYGUARD_SERVICE);
-		        mLock = mKeyguardManager.newKeyguardLock("MobileWebCam");
-		        mLock.disableKeyguard();
-	    	}
+	        KeyguardManager mKeyguardManager = (KeyguardManager)getSystemService(KEYGUARD_SERVICE);
+	        mLock = mKeyguardManager.newKeyguardLock("MobileWebCam");
+	        mLock.disableKeyguard();
 	        
 			try
 			{
@@ -103,33 +96,20 @@ public class TakeHiddenPicture extends CamActivity
 			{
 				e.printStackTrace();
 			}
-    	}
 
-    	super.onResume();
+        	super.onResume();
 
-    	if(!MobileWebCam.gIsRunning)
-    	{
 			mPreview.setVisibility(View.VISIBLE);
 			mDrawOnTop.setVisibility(View.INVISIBLE);
     		
-/*			Bundle extras=getIntent().getExtras();
-	    	if(extras != null)
-			{
-	    		if(extras.getString("alarm") != null && extras.getString("alarm").startsWith("photo"))
-				{
-					if(mPreview != null)
-					{
-						mPreview.TakePhoto();
-					}
-				}
-	    	}*/
-			
 			// timeout in case anything went wrong!
 			mHandler.removeCallbacks(mTimeOut);
 			mHandler.postDelayed(mTimeOut, 120 * 1000);
     	}
     	else
     	{
+        	super.onResume();
+
     		finish();
     	}
     	Log.v("MobileWebCam", "TakeHiddenPicture.onResume");
@@ -141,11 +121,6 @@ public class TakeHiddenPicture extends CamActivity
 		public void run()
 		{
 			MobileWebCam.LogE("TakeHiddenPicture timeout - finish!");
-			if(mLock != null)
-			{
-		    	mLock.reenableKeyguard();
-		    	mLock = null;
-			}
 			finish();
 		}
 	};
@@ -157,19 +132,17 @@ public class TakeHiddenPicture extends CamActivity
 
     	Log.v("MobileWebCam", "TakeHiddenPicture.onPause");
     	
-		mHandler.removeCallbacks(mTimeOut);
+/*		mHandler.removeCallbacks(mTimeOut);
     	if(mLock != null)
     	{
 	    	mLock.reenableKeyguard();
 	    	mLock = null;
-    	}
+    	} */
     }
     
     @Override
     public void onDestroy()
     {
-    	super.onDestroy();
-
     	Log.v("MobileWebCam", "TakeHiddenPicture.onDestroy");
     	
 		mHandler.removeCallbacks(mTimeOut);
@@ -178,9 +151,11 @@ public class TakeHiddenPicture extends CamActivity
 	    	mLock.reenableKeyguard();
 	    	mLock = null;
     	}
+
+    	super.onDestroy();
     }
     
-	@Override
+/*	@Override
 	protected void onNewIntent(Intent intent)
 	 {
     	if(!MobileWebCam.gIsRunning)
@@ -203,5 +178,5 @@ public class TakeHiddenPicture extends CamActivity
     	{
     		finish();
     	}
-	}    
+	}    */
 }

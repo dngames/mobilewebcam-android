@@ -17,8 +17,10 @@ package com.dngames.mobilewebcam;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -28,6 +30,8 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Bitmap.CompressFormat;
 import android.hardware.Camera;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -374,7 +378,7 @@ public class MobileWebCam extends CamActivity
 			}
     	}
 	}
-    
+	
     public void onSharedPreferenceChanged(SharedPreferences prefs, String key)
 	{
         String v = prefs.getString("camera_mode", "1");
@@ -432,6 +436,19 @@ public class MobileWebCam extends CamActivity
 				alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
 			}
 
+			if(mPreview != null)
+				mPreview.setVisibility(View.VISIBLE);
+			if(mDrawOnTop != null)
+				mDrawOnTop.setVisibility(View.INVISIBLE);
+			
+			if(key != null && key.equals("camera_mode"))
+				finish();
+			break;
+		case 4:
+			mSettings.mMode = Mode.BROADCASTRECEIVER;
+
+			CustomReceiverService.start(MobileWebCam.this);
+			
 			if(mPreview != null)
 				mPreview.setVisibility(View.VISIBLE);
 			if(mDrawOnTop != null)

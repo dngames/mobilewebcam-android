@@ -24,6 +24,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -77,11 +78,12 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public boolean mAutoRotateImages = false;
 	public String mEmailReceiverAddress = "";
 	public String mEmailSubject = "";
-	public enum Mode { MANUAL, NORMAL, HIDDEN, BACKGROUND };
+	public enum Mode { MANUAL, NORMAL, HIDDEN, BACKGROUND, BROADCASTRECEIVER };
 	public Mode mMode = Mode.NORMAL;
 	public boolean mMotionDetect = false;
 	public int mMotionColorChange = 15;
 	public int mMotionPixels = 25;
+	public String mBroadcastReceiver = "";
 	public boolean mNightDetect = false;
 	public boolean mAutoStart = false;
 	public int mReboot = 0; 
@@ -131,12 +133,24 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	    
 	public Bitmap mImprintBitmap = null;
 	
-	public static int getEditInt(SharedPreferences prefs, String name, int d)
+	public static int getEditInt(Context c, SharedPreferences prefs, String name, int d)
 	{
     	String v = prefs.getString(name, Integer.toString(d));
         if(v.length() < 1 || v.length() > 9)
         	return d;
-    	return Integer.parseInt(v);
+    	int i = 0;
+    	try
+    	{
+    		i = Integer.parseInt(v);
+    	}
+    	catch(NumberFormatException e)
+    	{
+    		if(e.getMessage() != null)
+    			Toast.makeText(c, e.getMessage(), Toast.LENGTH_LONG);
+    		else
+    			Toast.makeText(c, e.toString(), Toast.LENGTH_LONG);
+    	}
+    	return i;
 	}
 	
     public PhotoSettings(Context c)
@@ -184,11 +198,11 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		mMailPictures = prefs.getBoolean("cam_mailphoto", false);
     	mDropboxPictures = prefs.getBoolean("dropbox_upload", false);
 
-		mServerFreq = getEditInt(prefs, "server_every", 1);
-		mFTPFreq = getEditInt(prefs, "ftp_every", 1);
-		mMailFreq = getEditInt(prefs, "mail_every", 1);
-		mDropboxFreq = getEditInt(prefs, "dropbox_every", 1);
-		mStoreFreq = getEditInt(prefs, "store_every", 1);
+		mServerFreq = getEditInt(mContext, prefs, "server_every", 1);
+		mFTPFreq = getEditInt(mContext, prefs, "ftp_every", 1);
+		mMailFreq = getEditInt(mContext, prefs, "mail_every", 1);
+		mDropboxFreq = getEditInt(mContext, prefs, "dropbox_every", 1);
+		mStoreFreq = getEditInt(mContext, prefs, "store_every", 1);
 
 		mURL = prefs.getString("cam_url", mDefaulturl);
         mLogin = prefs.getString("cam_login", "");
@@ -197,9 +211,9 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         mDefaultname = prefs.getString("ftpserver_defaultname", "current.jpg");
         mFTPNumbered = prefs.getBoolean("cam_filenames", true);
         mFTPTimestamp = prefs.getBoolean("cam_datetime", false);
-        mFTPKeepPics = getEditInt(prefs, "ftp_keepoldpics", 0);
+        mFTPKeepPics = getEditInt(mContext, prefs, "ftp_keepoldpics", 0);
 		mFTP = prefs.getString("ftpserver_url", mDefaultFTPurl);
-		mFTPPort = getEditInt(prefs, "ftp_port", 21);
+		mFTPPort = getEditInt(mContext, prefs, "ftp_port", 21);
 		mFTPDir = prefs.getString("ftp_dir", "");
         mFTPLogin = prefs.getString("ftp_login", "");
         mFTPPassword = prefs.getString("ftp_password", "");
@@ -209,18 +223,18 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         mDropboxDefaultname = prefs.getString("dropbox_defaultname", "current.jpg");
         mDropboxNumbered = prefs.getBoolean("dropbox_filenames", false);
         mDropboxTimestamp = prefs.getBoolean("dropbox_datetime", false);
-        mDropboxKeepPics = getEditInt(prefs, "dropbox_keepoldpics", 0);
+        mDropboxKeepPics = getEditInt(mContext, prefs, "dropbox_keepoldpics", 0);
 
-        mRefreshDuration = getEditInt(prefs, "cam_refresh", 60) * 1000;
+        mRefreshDuration = getEditInt(mContext, prefs, "cam_refresh", 60) * 1000;
         
-        mImageSize = getEditInt(prefs, "picture_size_sel", 1);
-        mCustomImageW = getEditInt(prefs, "picture_size_custom_w", 320);
-        mCustomImageH = getEditInt(prefs, "picture_size_custom_h", 240);
+        mImageSize = getEditInt(mContext, prefs, "picture_size_sel", 1);
+        mCustomImageW = getEditInt(mContext, prefs, "picture_size_custom_w", 320);
+        mCustomImageH = getEditInt(mContext, prefs, "picture_size_custom_h", 240);
         mImageCompression = prefs.getInt("picture_compression", 85);
         mAutoFocus = prefs.getBoolean("picture_autofocus", false);
         
         mFrontCamera = prefs.getBoolean("cam_front", false);
-        mZoom = getEditInt(prefs, "zoom", 0);        
+        mZoom = getEditInt(mContext, prefs, "zoom", 0);        
         mWhiteBalance = prefs.getString("whitebalance", Camera.Parameters.WHITE_BALANCE_AUTO);
         
         mAutoRotateImages = prefs.getBoolean("picture_autorotate", false);
@@ -229,15 +243,15 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         mEmailReceiverAddress = prefs.getString("cam_email", "");
 		mEmailSubject = prefs.getString("cam_emailsubject", "");
 
-
 		mMotionDetect = prefs.getBoolean("motion_detect", false);
 		mMotionColorChange = prefs.getInt("motion_change", 15);
 		mMotionPixels = prefs.getInt("motion_value", 25);
+		mBroadcastReceiver = prefs.getString("broadcast_activation", "");
 		mNightDetect = prefs.getBoolean("night_detect", false);
 		mAutoStart = prefs.getBoolean("autostart", false);
 		mCameraStartupEnabled = prefs.getBoolean("cam_autostart", true);
         mShutterSound = prefs.getBoolean("shutter", true); 
-        mReboot = getEditInt(prefs, "reboot", 0);
+        mReboot = getEditInt(mContext, prefs, "reboot", 0);
 		mStartTime = prefs.getString("activity_starttime", "00:00");
 		mEndTime = prefs.getString("activity_endtime", "24:00");
 		mImprintDateTime = prefs.getString("imprint_datetimeformat", "yyyy/MM/dd   HH:mm:ss");
@@ -267,7 +281,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		
 		mImprintPicture = prefs.getBoolean("imprint_picture", false);
 		mFilterPicture = false; //***prefs.getBoolean("filter_picture", false);
-        mFilterType = getEditInt(prefs, "filter_sel", 0);
+        mFilterType = getEditInt(mContext, prefs, "filter_sel", 0);
 		mStoreGPS = prefs.getBoolean("store_gps", false);
 		
 		mMailAddress = prefs.getString("email_sender", "");
@@ -320,7 +334,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		mNoToasts = prefs.getBoolean("no_messages", false);
 		mFullWakeLock = prefs.getBoolean("full_wakelock", true);
 		
-        switch(getEditInt(prefs, "camera_mode", 1))
+        switch(getEditInt(mContext, prefs, "camera_mode", 1))
 		{
 		case 0:
 			mMode = Mode.MANUAL;
@@ -330,6 +344,9 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 			break;
 		case 3:
 			mMode = Mode.BACKGROUND;
+			break;
+		case 4:
+			mMode = Mode.BROADCASTRECEIVER;
 			break;
 		case 1:
 		default:

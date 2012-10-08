@@ -22,7 +22,9 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.widget.Toast;
 
 public class ControlReceiver extends BroadcastReceiver
 {
@@ -49,10 +51,10 @@ public class ControlReceiver extends BroadcastReceiver
 		String v = prefs.getString("camera_mode", "1");
 		if(v.length() < 1 || v.length() > 9)
 	        v = "1";
-		switch(Integer.parseInt(v))
+		switch(PhotoSettings.Mode.values()[Integer.parseInt(v)])
 		{
-		case 2:
-		case 3:
+		case HIDDEN:
+		case BACKGROUND:
 			{
 				AlarmManager alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 				Intent i = new Intent(context, PhotoAlarmReceiver.class);
@@ -64,8 +66,11 @@ public class ControlReceiver extends BroadcastReceiver
 				alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
 			}
 			break;
-		case 0:
-		case 1:
+		case BROADCASTRECEIVER:
+			CustomReceiverService.start(context);
+            break;
+		case MANUAL:
+		case NORMAL:
 		default:
 			Intent i = new Intent(context, MobileWebCam.class);
 			i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -84,10 +89,10 @@ public class ControlReceiver extends BroadcastReceiver
 		String v = prefs.getString("camera_mode", "1");
 		if(v.length() < 1 || v.length() > 9)
 	        v = "1";
-		switch(Integer.parseInt(v))
+		switch(PhotoSettings.Mode.values()[Integer.parseInt(v)])
 		{
-		case 2:
-		case 3:
+		case HIDDEN:
+		case BACKGROUND:
 			{
 				AlarmManager alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 				Intent i = new Intent(context, PhotoAlarmReceiver.class);
@@ -96,8 +101,11 @@ public class ControlReceiver extends BroadcastReceiver
 				PhotoAlarmReceiver.StopNotification(context);
 			}
 			break;
-		case 0:
-		case 1:
+		case BROADCASTRECEIVER:
+			CustomReceiverService.stop(context);
+			break;
+		case MANUAL:
+		case NORMAL:
 		default:
 			Intent i = new Intent(context, MobileWebCam.class);
 			i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

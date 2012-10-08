@@ -95,7 +95,8 @@ public class MobileWebCamHttpService extends Service implements OnSharedPreferen
 	{
 		super.onDestroy();
 
-		mServer.stop();
+		if(mServer != null)
+			mServer.stop();
 		mServer = null;
 	}
 
