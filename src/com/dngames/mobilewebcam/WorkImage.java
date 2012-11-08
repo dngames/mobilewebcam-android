@@ -37,6 +37,7 @@ import magick.util.MagickBitmap;
 import fakeawt.Dimension;
 import fakeawt.Rectangle;
 */
+import com.dngames.mobilewebcam.PhotoSettings.ImageScaleMode;
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
 
 import android.content.Context;
@@ -117,7 +118,7 @@ public class WorkImage implements Runnable, LocationListener
 		return txt;
 	}
 	
-	public static Bitmap loadScaled(byte[] imgdata, int target_w, int target_h, boolean keepsize, boolean matchtarget, Bitmap.Config cfg)
+/*	public static Bitmap loadScaled(byte[] imgdata, int target_w, int target_h, boolean keepsize, boolean matchtarget, Bitmap.Config cfg)
 	{
 		BitmapFactory.Options opts = new BitmapFactory.Options();
 		
@@ -163,7 +164,7 @@ public class WorkImage implements Runnable, LocationListener
 		{
 			opts.inSampleSize = 1;
 		}
-		opts.inScaled = false;
+//		opts.inScaled = false;
 		opts.inDither = false;
 		opts.inPreferredConfig = cfg;
 		
@@ -181,7 +182,7 @@ public class WorkImage implements Runnable, LocationListener
 			{
 				toolarge = true;
 				e.printStackTrace();
-				MobileWebCam.LogE("Not enough memory for wanted picture size!");
+				MobileWebCam.LogE("Not enough memory for wanted picture size! (1/" + opts.inSampleSize + ")");
 			}
 			trycount--;
 		}
@@ -215,7 +216,7 @@ public class WorkImage implements Runnable, LocationListener
 		}			
 		
 		return tmp;
-	}	
+	}*/	
 	
 /*	private Bitmap applyFilters(Bitmap tmp, boolean rotate)
 	{
@@ -407,6 +408,9 @@ public class WorkImage implements Runnable, LocationListener
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		BitmapFactory.Options opts = new BitmapFactory.Options();
 		
+		int final_w = -1;
+		int final_h = -1;
+		
 		int target_w = 512;
 		int target_h = 384;
 		if(mSettings.mImageSize == 2)
@@ -434,12 +438,12 @@ public class WorkImage implements Runnable, LocationListener
 		float desiredScaleW = 1.0f;
 		float desiredScaleH = 1.0f;
 		opts = new BitmapFactory.Options();
-		if(size != null)
+		if(size != null && mSettings.mImageSize != 4)
 		{
 			int width_tmp = size.width, height_tmp = size.height;
 			int scale = 1;
 			int trycount = 10;
-			while(true && mSettings.mImageSize != 4 && trycount > 0)
+			while(true && trycount > 0)
 			{
 				if(width_tmp / 2 < target_w || height_tmp / 2 < target_h)
 					break;
@@ -451,14 +455,32 @@ public class WorkImage implements Runnable, LocationListener
 			opts.inSampleSize = scale;
 //***				opts.inMutable = true;
 			
-			desiredScaleW = (float) target_w / width_tmp;
-			desiredScaleH = (float) target_w / width_tmp;
+			if(mSettings.mCustomImageScale == ImageScaleMode.LETTERBOX)
+			{
+				desiredScaleH = desiredScaleW = Math.min((float)target_w / (float)width_tmp, (float)target_h / (float)height_tmp);
+			}
+			else if(mSettings.mCustomImageScale == ImageScaleMode.CROP)
+			{
+				desiredScaleH = desiredScaleW = Math.max((float)target_w / (float)width_tmp, (float)target_h / (float)height_tmp);
+			}
+			else if(mSettings.mCustomImageScale == ImageScaleMode.NOSCALE)
+			{
+				desiredScaleW = 1.0f;
+				desiredScaleH = 1.0f;
+			}
+			else // if(mSettings.mCustomImageScale == ImageScaleMode.STRETCH)
+			{
+				desiredScaleW = (float)target_w / (float)width_tmp;
+				desiredScaleH = (float)target_h / (float)height_tmp;
+			}
+			
+//			MobileWebCam.LogI("Custom image size scaling: " + desiredScaleW + ", " + desiredScaleH);
 		}
 		else
 		{
 			opts.inSampleSize = 1;
 		}
-		opts.inScaled = false;
+//		opts.inScaled = false;
 		opts.inDither = false;
 		opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
 		
@@ -477,7 +499,7 @@ public class WorkImage implements Runnable, LocationListener
 			{
 				toolarge = true;
 				e.printStackTrace();
-				MobileWebCam.LogE("Not enough memory for wanted picture size!");
+				MobileWebCam.LogE("Not enough memory for wanted picture size! (1/" + opts.inSampleSize + ")");
 			}
 			trycount--;
 		}
@@ -485,38 +507,60 @@ public class WorkImage implements Runnable, LocationListener
 		
 		Log.v("MobileWebCam", "gBmp = " + gBmp + " opts.inSampleSize = " + opts.inSampleSize);		
 		
-		mData = null;
-		System.gc();
-		
-		if(gBmp != null && mSettings.mImageSize == 5)
+		if(gBmp != null)
 		{
-			Bitmap old = gBmp;
-			try
+			mData = null; // first decode successfull no longer need original data (otherwise keep as fallback)
+			System.gc();
+			
+			if(mSettings.mImageSize == 5)
 			{
-				// Resize
-				Matrix matrix = new Matrix();
-				matrix.postScale(desiredScaleW, desiredScaleH);
-				gBmp = Bitmap.createBitmap(old, 0, 0, old.getWidth(), old.getHeight(), matrix, true);
-					
-//				gBmp = Bitmap.createScaledBitmap(old, mSettings.mCustomImageW, mSettings.mCustomImageH, true);
-			}
-			catch(OutOfMemoryError e)
-			{
-				e.printStackTrace();
-				gBmp = old;
-			}
-
-			if(old != gBmp)
-			{
-				old.recycle();
-				old = null;
+				Bitmap old = gBmp;
+				try
+				{
+					// Resize
+					Matrix matrix = new Matrix();
+					matrix.postScale(desiredScaleW, desiredScaleH);
+					int crop_x = 0;
+					int crop_y = 0;
+					int crop_w = old.getWidth();
+					int crop_h = old.getHeight();
+					if(mSettings.mCustomImageScale == ImageScaleMode.CROP)
+					{
+						int w = crop_w;
+						int h = crop_h;
+						crop_w = w - (w - (int)((float)target_w / desiredScaleW));
+						crop_h = h - (h - (int)((float)target_h / desiredScaleH));
+						crop_x = (w - (int)((float)target_w / desiredScaleW)) / 2;
+						crop_y = (h - (int)((float)target_h / desiredScaleH)) / 2;
+					}
+					gBmp = Bitmap.createBitmap(old, crop_x, crop_y, crop_w, crop_h, matrix, true);
+				}
+				catch(OutOfMemoryError e)
+				{
+					e.printStackTrace();
+					gBmp = old;
+				}
+	
+				if(old != gBmp)
+				{
+					old.recycle();
+					old = null;
+				}
 			}
 		}
 		
 		if(gBmp != null)
 		{
+			boolean ignoreinactivity = false; 
+			long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
+			if(sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh)
+			{
+				MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+				ignoreinactivity = true;
+			}
+
 // TODO: do night detection on own downsampled image from mData to 100x100 for all sizes if! gBmp == null
-			if(mSettings.mNightDetect && isNightImage(gBmp))
+			if(mSettings.mNightDetect && isNightImage(gBmp) && !ignoreinactivity)
 			{
 				Preview.mPhotoLock.set(false);
 				MobileWebCam.LogI("Dropping night image.");
@@ -779,18 +823,15 @@ public class WorkImage implements Runnable, LocationListener
         			canvas.drawText(txt, tx, ty, p);
 				}
 
-				Log.v("MobileWebCam", "Workimage: imprint done");			
-			
-				if(MobileWebCam.gIsRunning)
-				{
-					mTextUpdater.SetPreview(gBmp);
-					
-					Log.v("MobileWebCam", "Workimage: preview set");
-				}
-
+				Log.v("MobileWebCam", "Workimage: imprint done");
+				
 				try
 				{
 					gBmp.compress(Bitmap.CompressFormat.JPEG, mSettings.mImageCompression, out);
+					
+					final_w = gBmp.getWidth();
+					final_h = gBmp.getHeight();
+					
 					out.flush();
 					out.close();
 				}
@@ -798,6 +839,25 @@ public class WorkImage implements Runnable, LocationListener
 				{
 					e.printStackTrace();
 				}
+				catch(OutOfMemoryError e)
+				{
+					MobileWebCam.LogE("Error: unable to compress jpg - out of memory!");
+				}
+
+				if(MobileWebCam.gIsRunning)
+				{
+					try
+					{
+						mTextUpdater.SetPreview(gBmp);
+					
+						Log.v("MobileWebCam", "Workimage: preview set");
+					}
+					catch(OutOfMemoryError e)
+					{
+						Log.e("MobileWebCam", e.toString());
+					}
+				}
+
 				gBmp.recycle();
 				gBmp = null;
 				
@@ -828,18 +888,27 @@ public class WorkImage implements Runnable, LocationListener
 					smalltmp = null;
 				}
 			}
-			
-			synchronized(MobileWebCamHttpService.gImageDataLock)
-			{
-				MobileWebCamHttpService.gImageData = mData;
-				MobileWebCamHttpService.gImageIndex++;
-			}
 		}
 		
 		System.gc();
 
 		if(mData != null && mData.length > 0)
 		{
+			// show browserinterface preview and pic info
+			synchronized(MobileWebCamHttpService.gImageDataLock)
+			{
+				MobileWebCamHttpService.gImageData = mData;
+				MobileWebCamHttpService.gImageWidth = final_w;
+				MobileWebCamHttpService.gImageHeight = final_h;
+				if(size != null)
+				{
+					MobileWebCamHttpService.gOriginalImageWidth = size.width;
+					MobileWebCamHttpService.gOriginalImageHeight = size.height;
+				}
+				MobileWebCamHttpService.gImageIndex++;
+			}
+
+			// now send picture
 			if(!Preview.sharePictureNow)
 			{
 				MobileWebCam.LogI("Picture taken ... uploading now!");

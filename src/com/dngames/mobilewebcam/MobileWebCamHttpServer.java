@@ -161,7 +161,7 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[4];
 		float usedMegs = (float)Debug.getNativeHeapAllocatedSize() / (float)1048576L;
 		msg += String.format("<br>Memory used: %.2f MB", usedMegs);
-		
+		msg += String.format("<br>Used upload image size: %d x %d (from %d x %d)", MobileWebCamHttpService.gImageWidth, MobileWebCamHttpService.gImageHeight, MobileWebCamHttpService.gOriginalImageWidth, MobileWebCamHttpService.gOriginalImageHeight);
 		
 		msg += "<hr>";
 		

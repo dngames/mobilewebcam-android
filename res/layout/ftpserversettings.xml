@@ -61,7 +61,7 @@
 		
 	<PreferenceCategory
 		android:title="FTP Server Setup">
-
+	  
   <EditTextPreference
             android:key="ftpserver_url"
             android:title="Server address"

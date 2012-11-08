@@ -309,7 +309,7 @@
             android:inputType="number"
             android:singleLine="true"
 	            />
-  	<EditTextPreference
+  		<EditTextPreference
             android:key="picture_size_custom_h"
             android:title="Height"
             android:summary="Enter the height you would like to have the final picture scaled to. Please choose Custom in size settings! Consumes more memory!"
@@ -317,13 +317,23 @@
             android:inputType="number"
             android:singleLine="true"
 	            />	
+	            
+		<ListPreference
+           android:key="custompicscale"
+           android:title="@string/title_picscale"
+           android:summary="@string/summary_picscale"
+           android:entries="@array/entries_picscale"
+           android:entryValues="@array/entryvalues_picscale"
+           android:defaultValue="NOSCALE"
+           android:dialogTitle="@string/dialog_title_picscale"/>
+ 		
 	</PreferenceScreen>
 		
     <CheckBoxPreference
 		android:key="store_gps"
 		android:title="GPS"
 		android:summary="Add GPS coordinates to picture files (EXIF)."
-	    android:defaultValue="true"/>	
+	    android:defaultValue="false"/>	
 
   </PreferenceCategory>	
 		

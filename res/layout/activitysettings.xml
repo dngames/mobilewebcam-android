@@ -78,7 +78,7 @@
 		        android:text=""
 		        android:max="100"
 		        />	
-		    		    
+		        
       	</PreferenceCategory>
       	
 		<PreferenceCategory
@@ -94,9 +94,28 @@
 	            android:scrollHorizontally="true"
 	            android:singleLine="true"
 	            />
-		    		    				
+		  
+		<PreferenceScreen
+		    android:key="cam_intents"
+			android:title="Intents"
+			android:summary="MobileWebCam can receive 'com.dngames.mobilewebcam.START' to start taking pictures (disable first) and '.STOP' to stop again."
+			android:enabled="false"/>					  
+
       	</PreferenceCategory>
-		    	    
+      	
+		<PreferenceCategory
+		    android:title="Still Alive?">
+		
+	    	<EditTextPreference
+	            android:key="motion_keepalive_refresh"
+	            android:title="Keepalive Refresh Time"
+	            android:summary="Send picture even at non activity/night times or without motion detected after this many seconds to get a status update."
+	            android:defaultValue="3600"
+	            android:numeric="integer"
+	            />		    
+		    
+		</PreferenceCategory>
+
 		<PreferenceCategory
 			android:title="Start">
 		

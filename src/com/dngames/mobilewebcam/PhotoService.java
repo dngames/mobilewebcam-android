@@ -30,6 +30,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.net.ftp.FTPClient;
@@ -50,6 +51,7 @@ import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.ExifInterface;
 import android.os.AsyncTask;
+import android.os.Debug;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
@@ -177,6 +179,29 @@ public class PhotoService// implements SurfaceHolder.Callback
 			Camera.Parameters params = mCamera.getParameters();
 			if(params != null)
 			{
+				if(mSettings.mImageSize == 4 || mSettings.mImageSize == 5)
+				{
+	        		List<Camera.Size> sizes = NewCameraFunctions.getSupportedPictureSizes(params);
+	        		if(sizes != null)
+	        		{
+	        			params.setPictureSize(sizes.get(0).width, sizes.get(0).height);
+	        			if(mSettings.mImageSize == 5)
+	        			{
+	        				// find best matching size (next larger)
+	        				for(int i = sizes.size() - 1; i >= 0; i--)
+	        				{
+	        					Camera.Size s = sizes.get(i);
+	        					if(s.width >= mSettings.mCustomImageW && s.height >= mSettings.mCustomImageH)
+	        					{
+		        					params.setPictureSize(s.width, s.height);
+		        					break;
+	        					}
+	        				}
+	        			}
+		        		mCamera.setParameters(params);
+	        		}
+				}
+				
 				if(NewCameraFunctions.isZoomSupported(params))
 					NewCameraFunctions.setZoom(params, mSettings.mZoom);
 				if(NewCameraFunctions.getSupportedWhiteBalance(params) != null)
@@ -190,6 +215,8 @@ public class PhotoService// implements SurfaceHolder.Callback
 					e.printStackTrace();
 				}
 			}
+			
+			MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();			
 			
 			Log.i("MobileWebCam", "takePicture");
 /*			if(mSettings.mAutoFocus)
@@ -334,7 +361,7 @@ public class PhotoService// implements SurfaceHolder.Callback
 				});
 		}
 	};
-
+	
 	public static class UploadFTPPhotoTask extends AsyncTask<byte[], String, String>
 	{
 		private Context mContext = null;
@@ -358,27 +385,27 @@ public class PhotoService// implements SurfaceHolder.Callback
 				publishProgress(mContext.getString(R.string.uploading, mSettings.mFTP));
 			
 			FTPClient client = new FTPClient();  
-
-			try
-			{
-				client.connect(InetAddress.getByName(mSettings.mFTP), mSettings.mFTPPort);
-				client.login(mSettings.mFTPLogin, mSettings.mFTPPassword);
-				client.changeWorkingDirectory(mSettings.mFTPDir);
-			 
+			
+				try
+				{
+						client.connect(InetAddress.getByName(mSettings.mFTP), mSettings.mFTPPort);
+						client.login(mSettings.mFTPLogin, mSettings.mFTPPassword);
+						client.changeWorkingDirectory(mSettings.mFTPDir);
+	
 			    if(client.getReplyString().contains("250"))
-			    {
-			    	client.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE);
+					    {
+						client.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE);
 			        BufferedInputStream buffIn = null;
 			        buffIn = new BufferedInputStream(new ByteArrayInputStream(jpeg[0]));
-			        if(mSettings.mFTPPassive)
-			        	client.enterLocalPassiveMode();
-			        else
-			        	client.enterLocalActiveMode();
-			 
-    				Date date = new Date();
-    	            SimpleDateFormat sdf = new SimpleDateFormat ("yyyyMMddHHmmss");
-
-    	            String filename = mSettings.mDefaultname;
+				        if(mSettings.mFTPPassive)
+				        	client.enterLocalPassiveMode();
+				        else
+				        	client.enterLocalActiveMode();
+				 
+					Date date = new Date();
+		            SimpleDateFormat sdf = new SimpleDateFormat ("yyyyMMddHHmmss");
+	
+		            String filename = mSettings.mDefaultname;
 			        if(mSettings.mFTPKeepPics > 0)
 			        {
 			        	filename = filename.replace(".jpg", "");
@@ -387,7 +414,7 @@ public class PhotoService// implements SurfaceHolder.Callback
 			        	{
 			        		try
 			        		{
-			        			client.rename(filename + i + ".jpg", filename + (i + 1) + ".jpg");
+									client.rename(filename + i + ".jpg", filename + (i + 1) + ".jpg");
 			        		}
 			        		catch(IOException e)
 			        		{
@@ -395,7 +422,7 @@ public class PhotoService// implements SurfaceHolder.Callback
 			        	}
 		        		try
 		        		{
-		        			client.rename(mSettings.mDefaultname, filename + "1.jpg");
+								client.rename(mSettings.mDefaultname, filename + "1.jpg");
 		        		}
 		        		catch(IOException e)
 		        		{
@@ -440,22 +467,22 @@ public class PhotoService// implements SurfaceHolder.Callback
 							e.printStackTrace();
 							MobileWebCam.LogE("No file to write EXIF gps tag!");
 						}
-
+	
 						File filePath = mContext.getFilesDir();
 						File file = new File(filePath, filename);
 						ExifWrapper.addCoordinates(file.getAbsolutePath(), WorkImage.gLatitude, WorkImage.gLongitude);
 	        			
 	        			buffIn = new BufferedInputStream(mContext.openFileInput(filename));
 					}
-
-					result = client.storeFile(filename, buffIn);
+	
+						result = client.storeFile(filename, buffIn);
 			        buffIn.close();
-			        client.logout();
-			        client.disconnect();
+				        client.logout();
+				        client.disconnect();
 			        
 			        if(deletetmpfile)
 			        	mContext.deleteFile(filename);
-
+	
 			        if(result)
 			        {
 				    	publishProgress("ok");
@@ -472,28 +499,28 @@ public class PhotoService// implements SurfaceHolder.Callback
 			    	publishProgress("wrong ftp response: " + client.getReplyString());
 			    	MobileWebCam.LogE("wrong ftp response: " + client.getReplyString());
 			    }
-			 
-			} catch (SocketException e) {
-				e.printStackTrace();
-				publishProgress("Ftp socket exception!");
-				MobileWebCam.LogE("Ftp socket exception!");
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-				publishProgress("Unknown ftp host!");
-				MobileWebCam.LogE("Unknown ftp host!");
-			} catch (IOException e) {
-				e.printStackTrace();
-				if(e.getMessage() != null)
-				{
-					publishProgress("IOException: ftp\n" + e.getMessage());
-					MobileWebCam.LogE("IOException: ftp\n" + e.getMessage());
-				}
-				else
-				{
-					publishProgress("ftp IOException");
-					MobileWebCam.LogE("ftp IOException");
-				}
-			}
+				 
+				} catch (SocketException e) {
+					e.printStackTrace();
+					publishProgress("Ftp socket exception!");
+					MobileWebCam.LogE("Ftp socket exception!");
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+					publishProgress("Unknown ftp host!");
+					MobileWebCam.LogE("Unknown ftp host!");
+				} catch (IOException e) {
+					e.printStackTrace();
+					if(e.getMessage() != null)
+					{
+						publishProgress("IOException: ftp\n" + e.getMessage());
+						MobileWebCam.LogE("IOException: ftp\n" + e.getMessage());
+					}
+					else
+					{
+						publishProgress("ftp IOException");
+						MobileWebCam.LogE("ftp IOException");
+					}
+					}
 				
 			MobileWebCam.gUploadingCount--;
 			
@@ -589,7 +616,7 @@ public class PhotoService// implements SurfaceHolder.Callback
 			mTextUpdater.Toast(values[0], Toast.LENGTH_SHORT);            
 		}
 	}
-	
+
 /*	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
 	{

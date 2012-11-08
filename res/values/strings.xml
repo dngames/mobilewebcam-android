@@ -85,5 +85,21 @@
 		<item>7</item>
 		<item>8</item>
 	</string-array>
+	
+	<string name="title_picscale">Scale Mode</string>
+	<string name="summary_picscale">Select how the camera picture is scaled to fit the custom size.</string>
+	<string name="dialog_title_picscale">Scale Mode</string>
+	<string-array name="entries_picscale">
+		<item>Letterbox</item>
+		<item>No border (crop)</item>
+		<item>Stretch</item>
+		<item>Original (camera res)</item>
+	</string-array>
+	<string-array name="entryvalues_picscale">
+		<item>LETTERBOX</item>
+		<item>CROP</item>
+		<item>STRETCH</item>
+		<item>NOSCALE</item>
+	</string-array>	
   
 </resources>

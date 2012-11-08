@@ -71,6 +71,8 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public int mImageSize = 1;
 	public int mCustomImageW = 320;
 	public int mCustomImageH = 240;
+	public enum ImageScaleMode { LETTERBOX, CROP, STRETCH, NOSCALE };
+	public ImageScaleMode mCustomImageScale = ImageScaleMode.CROP;
 	public int mImageCompression = 85;
 	public boolean mAutoFocus = false;
 	public boolean mForcePortraitImages = false;
@@ -83,6 +85,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public boolean mMotionDetect = false;
 	public int mMotionColorChange = 15;
 	public int mMotionPixels = 25;
+	public int mMotionDetectKeepAliveRefresh = 3600;
 	public String mBroadcastReceiver = "";
 	public boolean mNightDetect = false;
 	public boolean mAutoStart = false;
@@ -198,11 +201,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		mMailPictures = prefs.getBoolean("cam_mailphoto", false);
     	mDropboxPictures = prefs.getBoolean("dropbox_upload", false);
 
-		mServerFreq = getEditInt(mContext, prefs, "server_every", 1);
-		mFTPFreq = getEditInt(mContext, prefs, "ftp_every", 1);
-		mMailFreq = getEditInt(mContext, prefs, "mail_every", 1);
-		mDropboxFreq = getEditInt(mContext, prefs, "dropbox_every", 1);
-		mStoreFreq = getEditInt(mContext, prefs, "store_every", 1);
+		mFTPFreq = Math.max(getEditInt(mContext, prefs, "ftp_every", 1), 1);
 
 		mURL = prefs.getString("cam_url", mDefaulturl);
         mLogin = prefs.getString("cam_login", "");
@@ -230,6 +229,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         mImageSize = getEditInt(mContext, prefs, "picture_size_sel", 1);
         mCustomImageW = getEditInt(mContext, prefs, "picture_size_custom_w", 320);
         mCustomImageH = getEditInt(mContext, prefs, "picture_size_custom_h", 240);
+        mCustomImageScale = Enum.valueOf(ImageScaleMode.class, prefs.getString("custompicscale", "CROP"));
         mImageCompression = prefs.getInt("picture_compression", 85);
         mAutoFocus = prefs.getBoolean("picture_autofocus", false);
         
@@ -246,6 +246,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		mMotionDetect = prefs.getBoolean("motion_detect", false);
 		mMotionColorChange = prefs.getInt("motion_change", 15);
 		mMotionPixels = prefs.getInt("motion_value", 25);
+		mMotionDetectKeepAliveRefresh = getEditInt(mContext, prefs, "motion_keepalive_refresh", 3600);
 		mBroadcastReceiver = prefs.getString("broadcast_activation", "");
 		mNightDetect = prefs.getBoolean("night_detect", false);
 		mAutoStart = prefs.getBoolean("autostart", false);

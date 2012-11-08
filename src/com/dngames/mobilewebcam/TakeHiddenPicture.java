@@ -78,26 +78,35 @@ public class TakeHiddenPicture extends CamActivity
     @Override
     public void onResume()
     {
+    	Log.v("MobileWebCam", "TakeHiddenPicture.onResume");
+
 /*        WindowManager.LayoutParams lp = getWindow().getAttributes();
         lp.screenBrightness = 0.0f;
         getWindow().setAttributes(lp);
 */
-    	if(!MobileWebCam.gIsRunning && !MobileWebCam.gInSettings && mLock == null)
+        KeyguardManager mgr = (KeyguardManager)getSystemService(KEYGUARD_SERVICE);
+    	if(mgr.inKeyguardRestrictedInputMode())
     	{
-	        KeyguardManager mKeyguardManager = (KeyguardManager)getSystemService(KEYGUARD_SERVICE);
-	        mLock = mKeyguardManager.newKeyguardLock("MobileWebCam");
+        	Log.v("MobileWebCam", "Disable keyguard.");
+
+        	mLock = mgr.newKeyguardLock("MobileWebCam");
 	        mLock.disableKeyguard();
-	        
+
 			try
 			{
 				Thread.sleep(100);
 			}
 			catch(InterruptedException e)
 			{
-				e.printStackTrace();
 			}
 
-        	super.onResume();
+        	Log.v("MobileWebCam", "Keyguard unlocked!");
+    	}
+	        
+		super.onResume();
+
+		if(!MobileWebCam.gIsRunning && !MobileWebCam.gInSettings)
+    	{
 
 			mPreview.setVisibility(View.VISIBLE);
 			mDrawOnTop.setVisibility(View.INVISIBLE);
@@ -108,11 +117,8 @@ public class TakeHiddenPicture extends CamActivity
     	}
     	else
     	{
-        	super.onResume();
-
     		finish();
     	}
-    	Log.v("MobileWebCam", "TakeHiddenPicture.onResume");
     }
     
     private Runnable mTimeOut = new Runnable()
@@ -132,8 +138,7 @@ public class TakeHiddenPicture extends CamActivity
 
     	Log.v("MobileWebCam", "TakeHiddenPicture.onPause");
     	
-/*		mHandler.removeCallbacks(mTimeOut);
-    	if(mLock != null)
+/*    	if(mLock != null)
     	{
 	    	mLock.reenableKeyguard();
 	    	mLock = null;
@@ -145,11 +150,12 @@ public class TakeHiddenPicture extends CamActivity
     {
     	Log.v("MobileWebCam", "TakeHiddenPicture.onDestroy");
     	
-		mHandler.removeCallbacks(mTimeOut);
     	if(mLock != null)
     	{
 	    	mLock.reenableKeyguard();
 	    	mLock = null;
+	    	
+        	Log.v("MobileWebCam", "Keyguard locked again!");	    	
     	}
 
     	super.onDestroy();

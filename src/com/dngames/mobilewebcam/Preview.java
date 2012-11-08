@@ -35,7 +35,9 @@ import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Environment;
+import android.os.PowerManager;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.View;
@@ -150,17 +152,35 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						
 						if(!mSettings.mURL.equals(mSettings.mDefaulturl) || (mSettings.mFTPPictures && !mSettings.mFTP.equals(mSettings.mDefaultFTPurl)) || mSettings.mMailPictures || mSettings.mStorePictures || mSettings.mDropboxPictures)
 						{
+							boolean ignoreinactivity = false; 
+							long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
+							if(sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh)
+							{
+								MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+								ignoreinactivity = true;
+							}
+							
 							Date date = new Date();
-							int h = Integer.parseInt(mSettings.mStartTime.split(":")[0]);
-							int m = Integer.parseInt(mSettings.mStartTime.split(":")[1]);
+							String[] time = mSettings.mStartTime.split(":");
+							int h = 0;
+							int m = 0;
+							if(time.length > 0)
+								h = Integer.parseInt(time[0]);
+							if(time.length > 1)
+								m = Integer.parseInt(time[1]);
 							int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
 							int check_dayminutes = h * 60 + m; 
-							if(cur_dayminutes >= check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime))
+							if(cur_dayminutes >= check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
 							{
-								h = Integer.parseInt(mSettings.mEndTime.split(":")[0]);
-								m = Integer.parseInt(mSettings.mEndTime.split(":")[1]);
+								time = mSettings.mEndTime.split(":");
+								h = 24;
+								m = 0;
+								if(time.length > 0)
+									h = Integer.parseInt(time[0]);
+								if(time.length > 1)
+									m = Integer.parseInt(time[1]);
 								check_dayminutes = h * 60 + m; 
-								if(cur_dayminutes < check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime))
+								if(cur_dayminutes < check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
 								{
 									Log.i("MobileWebCam", "mPostPicture.try");
 									if(!mSettings.mShutterSound)
@@ -176,19 +196,44 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 										Camera.Parameters params = mCamera.getParameters();
 										if(params != null)
 										{
-											if(NewCameraFunctions.isZoomSupported(params))
+											if(mSettings.mImageSize == 4 || mSettings.mImageSize == 5)
 											{
+								        		List<Camera.Size> sizes = NewCameraFunctions.getSupportedPictureSizes(params);
+								        		if(sizes != null)
+								        		{
+								        			params.setPictureSize(sizes.get(0).width, sizes.get(0).height);
+								        			if(mSettings.mImageSize == 5)
+								        			{
+								        				// find best matching size (next larger)
+								        				for(int i = sizes.size() - 1; i >= 0; i--)
+								        				{
+								        					Camera.Size s = sizes.get(i);
+								        					if(s.width >= mSettings.mCustomImageW && s.height >= mSettings.mCustomImageH)
+								        					{
+									        					params.setPictureSize(s.width, s.height);
+									        					break;
+								        					}
+								        				}
+								        			}
+									        		mCamera.setParameters(params);
+								        		}
+											}
+											
+											if(NewCameraFunctions.isZoomSupported(params))
 												NewCameraFunctions.setZoom(params, mSettings.mZoom);
-												try
-												{
-													mCamera.setParameters(params);
-												}
-												catch(RuntimeException e)
-												{
-													e.printStackTrace();
-												}
+											if(NewCameraFunctions.getSupportedWhiteBalance(params) != null)
+												NewCameraFunctions.setWhiteBalance(params, mSettings.mWhiteBalance);
+											try
+											{
+												mCamera.setParameters(params);
+											}
+											catch(RuntimeException e)
+											{
+												e.printStackTrace();
 											}
 										}
+										
+										MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();										
 										
 										if(mSettings.mAutoFocus)
 											mCamera.autoFocus(autofocusCallback);
@@ -350,18 +395,13 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	
 	public void onPause()
 	{
+		mActivity.releaseLocks();
+		BackgroundPhoto.releaseWakeLocks();
+		
         mOrientationListener.disable();        
 		mHandler.removeCallbacks(mPostPicture);
 
-// TODO: check if camera is still locked!
-		if(mCamera != null)
-		{
-			Camera shutdown = mCamera;
-			mCamera = null;
-			shutdown.setPreviewCallback(null);
-			shutdown.stopPreview();
-			shutdown.release();
-		}
+		shutDownCamAsync();
 		
 		if(mPreviewBitmap != null)
 			mPreviewBitmap.recycle();
@@ -373,22 +413,61 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 
 	public void onDestroy()
 	{
+		mActivity.releaseLocks();
+		BackgroundPhoto.releaseWakeLocks();
+		
 		mOrientationListener = null;
 		mHandler.removeCallbacks(mPostPicture);
 
-		if(mCamera != null)
-		{
-			Camera shutdown = mCamera;
-			mCamera = null;
-			shutdown.setPreviewCallback(null);
-			shutdown.stopPreview();
-			shutdown.release();
-		}
+		shutDownCamAsync();
 		
 		gPreview = null;	
 
 		Log.i("MobileWebCam", "Preview.onDestroy()");				
 	}
+	
+	// wait until cam can close
+	private synchronized void shutDownCamAsync()
+	{
+		if(mCamera != null)
+		{
+			if(mPhotoLock.get())
+			{
+				new Thread(new Runnable()
+				{
+					@Override
+					public void run()
+					{
+						// close cam when no longer required
+						while(mPhotoLock.get())
+						{
+							try {
+								Thread.sleep(500);
+							} catch (InterruptedException e) {
+							}
+						}
+						
+						if(mCamera != null)
+						{
+							Camera shutdown = mCamera;
+							mCamera = null;
+							shutdown.setPreviewCallback(null);
+							shutdown.stopPreview();
+							shutdown.release();
+						}
+					}
+				}).start();
+			}
+			else
+			{
+				Camera shutdown = mCamera;
+				mCamera = null;
+				shutdown.setPreviewCallback(null);
+				shutdown.stopPreview();
+				shutdown.release();
+			}
+		}
+	}	
 	
 	private void tryOpenCam()
 	{
@@ -515,12 +594,15 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 							@Override
 							public void onPreviewFrame(byte[] data, Camera camera)
 							{
-								int d = (mPreviewChecker.mDataLockIdx + 1) % mPreviewChecker.DATACOUNT;
-								if(mPreviewChecker.mData[d] == null)
-									mPreviewChecker.mData[d] = new byte[data.length];
-								System.arraycopy(data, 0, mPreviewChecker.mData[d], 0, data.length);
-								if(MobileWebCam.DEBUG_MOTIONDETECT && mActivity.mDrawOnTop != null)
-									mActivity.mDrawOnTop.invalidate();
+								if(mPreviewChecker != null)
+								{
+									int d = (mPreviewChecker.mDataLockIdx + 1) % mPreviewChecker.DATACOUNT;
+									if(mPreviewChecker.mData[d] == null)
+										mPreviewChecker.mData[d] = new byte[data.length];
+									System.arraycopy(data, 0, mPreviewChecker.mData[d], 0, data.length);
+									if(MobileWebCam.DEBUG_MOTIONDETECT && mActivity.mDrawOnTop != null)
+										mActivity.mDrawOnTop.invalidate();
+								}
 							}
 						});
 
@@ -561,16 +643,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			mPreviewChecker.mStop = true;
 		mPreviewChecker = null;
 
-		// Surface will be destroyed when we return, so stop the preview.
-		// Because the CameraDevice object is not a shared resource, it's very
-		// important to release it when the activity is paused.
-		if(mCamera != null)
-		{
-			mCamera.setPreviewCallback(null);
-			mCamera.stopPreview();
-			mCamera.release();
-			mCamera = null;
-		}
+		shutDownCamAsync();
 	}
 	
 	public void RestartCamera()
@@ -607,6 +680,9 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		
 		public void run()
 		{
+			if(mCamera == null)
+				return;
+			
 			Camera.Parameters parameters = mCamera.getParameters();
 	    	int w = parameters.getPreviewSize().width;
 	    	int h = parameters.getPreviewSize().height;
@@ -695,7 +771,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						{
 
 							long lasttime = MobileWebCam.gLastMotionTime; 
-							MobileWebCam.gLastMotionTime = System.currentTimeMillis();
+							MobileWebCam.gLastMotionKeepAliveTime = MobileWebCam.gLastMotionTime = System.currentTimeMillis();
 							if(MobileWebCam.gLastMotionTime - lasttime >= mSettings.mRefreshDuration * 2)
 							{
 								mHandler.removeCallbacks(mPostPicture);
@@ -725,12 +801,21 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						}
 						else
 						{
+							final long sincelastmotion = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
+							if(sincelastmotion >= mSettings.mMotionDetectKeepAliveRefresh)
+							{
+								MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+								
+								// keep alive picture
+								mHandler.removeCallbacks(mPostPicture);
+								mHandler.post(mPostPicture);
+							}
 							final int d = diffcnt;
 							mHandler.post(new Runnable() {
 								@Override
 								public void run()
 								{
-									mActivity.mMotionTextView.setText("Moved pixels: " + d + "  last movement: " + (System.currentTimeMillis() - MobileWebCam.gLastMotionTime));
+									mActivity.mMotionTextView.setText("Moved pixels: " + d + "  last movement: " + sincelastmotion);
 								}
 							});
 						}
@@ -1075,52 +1160,56 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		if(!MobileWebCam.gIsRunning)
 			return;
 		
-		mPreviewBitmapLock.set(true);
-
-		if(mPreviewBitmap != null)
-			mPreviewBitmap.recycle();
-		mPreviewBitmap = null;
-		
-		int w = Math.max(image.getWidth(), 384);
-		float scale = (float)image.getWidth() / (float)w;
-		int h = (int)((float)image.getHeight() * scale);
-		if(w < h)
-		{
-			h = Math.max(image.getHeight(), 384);
-			scale = (float)image.getHeight() / (float)h;
-			w = (int)((float)image.getWidth() * scale);
-		}
-
-		try
-		{
-			mPreviewBitmap = Bitmap.createScaledBitmap(image, w, h, true);
-		}
-		catch(OutOfMemoryError e)
-		{
-			MobileWebCam.LogI("Not enough memory for fullsize preview!");
+		if(mActivity.mDrawOnTop != null && mSettings.mMode == Mode.HIDDEN)
+		{		
+			mPreviewBitmapLock.set(true);
+	
+			if(mPreviewBitmap != null)
+				mPreviewBitmap.recycle();
+			mPreviewBitmap = null;
+			
+			int w = Math.min(image.getWidth(), 384);
+			float scale = (float)image.getWidth() / (float)w;
+			int h = (int)((float)image.getHeight() * scale);
+			if(w < h)
+			{
+				h = Math.min(image.getHeight(), 384);
+				scale = (float)image.getHeight() / (float)h;
+				w = (int)((float)image.getWidth() * scale);
+			}
+	
 			try
 			{
-				mPreviewBitmap = Bitmap.createScaledBitmap(image, image.getWidth() / 20, image.getHeight() / 20, true);
+				mPreviewBitmap = Bitmap.createScaledBitmap(image, w, h, true);
 			}
-			catch(OutOfMemoryError e1)
+			catch(OutOfMemoryError e)
 			{
-				e1.printStackTrace();
+				MobileWebCam.LogI("Not enough memory for fullsize preview!");
+				try
+				{
+					mPreviewBitmap = Bitmap.createScaledBitmap(image, image.getWidth() / 20, image.getHeight() / 20, true);
+				}
+				catch(OutOfMemoryError e1)
+				{
+					e1.printStackTrace();
+				}
 			}
-		}
-		if(mActivity.mDrawOnTop != null && mSettings.mMode == Mode.HIDDEN)
-		{
+	
 			mActivity.mDrawOnTop.setVisibility(VISIBLE);
 			invalidate();
 			mActivity.mDrawOnTop.invalidate();
+
+			mPreviewBitmapLock.set(false);
 		}
-		mPreviewBitmapLock.set(false);
 	}
 	
 	@Override
 	public void JobFinished()
 	{
-		SharedPreferences prefs = mActivity.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
+        mActivity.releaseLocks();
+		BackgroundPhoto.releaseWakeLocks();
 
+		SharedPreferences prefs = mActivity.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
         String v = prefs.getString("camera_mode", "1");
         if(v.length() < 1 || v.length() > 9)
         	v = "1";
