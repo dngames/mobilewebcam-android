@@ -101,9 +101,9 @@ public class SystemSettings extends PreferenceActivity implements OnSharedPrefer
 	            startActivity(intent);
 	            return true;
 	        }
-	    });        
-	 }
-	 	 
+	    });
+	    	    		}
+	 
      public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
      {
        	 if(key.equals("server_enabled"))

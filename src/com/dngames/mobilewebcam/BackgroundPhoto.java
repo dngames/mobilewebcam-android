@@ -1,3 +1,17 @@
+/* Copyright 2012 Michael Haar
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
 package com.dngames.mobilewebcam;
 
 import java.lang.ref.WeakReference;
@@ -23,6 +37,14 @@ public class BackgroundPhoto implements ITextUpdater
 	
 	public void TakePhoto(Context context, SharedPreferences prefs, PhotoSettings.Mode mode)
 	{
+		boolean ignoreinactivity = false; 
+		long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
+		if(sincelastalive >= PhotoSettings.getEditInt(context, prefs, "motion_keepalive_refresh", 3600))
+		{
+			MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+			ignoreinactivity = true;
+		}
+		
 		String startTime = prefs.getString("activity_starttime", "00:00");
 		String endTime = prefs.getString("activity_endtime", "24:00");
 
@@ -31,15 +53,16 @@ public class BackgroundPhoto implements ITextUpdater
 		int m = Integer.parseInt(startTime.split(":")[1]);
 		int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
 		int check_dayminutes = h * 60 + m; 
-		if(cur_dayminutes >= check_dayminutes || startTime.equals(endTime))
+		if(cur_dayminutes >= check_dayminutes || startTime.equals(endTime) || ignoreinactivity)
 		{
 			h = Integer.parseInt(endTime.split(":")[0]);
 			m = Integer.parseInt(endTime.split(":")[1]);
 			check_dayminutes = h * 60 + m; 
-			if(cur_dayminutes < check_dayminutes || startTime.equals(endTime))
+			if(cur_dayminutes < check_dayminutes || startTime.equals(endTime) || ignoreinactivity)
 			{
 				if(mWakeLock == null || !mWakeLock.isHeld())
 				{
+					// get lock for one picture
 					PowerManager pwrmgr = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
 					mWakeLock = pwrmgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MobileWebCam.PhotoAlarm");
 				    mWakeLock.acquire();
@@ -130,7 +153,13 @@ public class BackgroundPhoto implements ITextUpdater
 	{
 		if(Preview.gPreview != null)
 			Preview.gPreview.JobFinished();
+		
+		releaseWakeLocks();
+	}
 
+	public static void releaseWakeLocks()
+	{
+		// release lock for one picture
 		if(mWifiLock != null)
 		{
 			if(mWifiLock.isHeld())

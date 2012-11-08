@@ -40,6 +40,31 @@ public class ControlReceiver extends BroadcastReceiver
 		{
 			Stop(context, prefs);
 		}
+		else if(intent.getAction().equals("com.dngames.mobilewebcam.PHOTO"))
+		{
+			String v = prefs.getString("camera_mode", "1");
+			if(v.length() < 1 || v.length() > 9)
+	        	v = "1";
+			int mode = Integer.parseInt(v);
+			if(mode == 2 || mode == 3)
+			{
+				AlarmManager alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+				Intent i = new Intent(context, PhotoAlarmReceiver.class);
+				PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
+				// for this command we do NOT cancel any pending intents!
+				Calendar time = Calendar.getInstance();
+				time.setTimeInMillis(System.currentTimeMillis());
+				time.add(Calendar.SECOND, 0);
+				alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
+			}
+			else
+			{
+				Intent i = new Intent(context, MobileWebCam.class);
+				i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+				i.putExtra("command", "photo");
+				context.startActivity(i);
+			}
+		}
     }
 
 	public static void Start(Context context, SharedPreferences prefs)

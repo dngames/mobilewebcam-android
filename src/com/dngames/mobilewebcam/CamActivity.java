@@ -20,9 +20,12 @@ import com.dngames.mobilewebcam.PhotoSettings.Mode;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.PowerManager;
+import android.util.Log;
 import android.widget.TextView;
 
 public class CamActivity extends Activity
@@ -31,8 +34,6 @@ public class CamActivity extends Activity
     
     protected Preview mPreview = null;
 	
-    private PowerManager.WakeLock mWakeLock = null;	
-
     public DrawOnTop mDrawOnTop;
 	public TextView mTextView = null;
 	public TextView mMotionTextView = null;	
@@ -68,13 +69,19 @@ public class CamActivity extends Activity
         mSettings.EnableMobileWebCam(mSettings.mCameraStartupEnabled);
     }
     
+    private PowerManager.WakeLock mWakeLock = null;
+    private WifiManager.WifiLock mWifiLock = null;
+    
     @Override
     public void onResume()
     {
     	super.onResume();
     	
-    	if(mWakeLock == null)
-    	{
+        if(mWakeLock == null || !mWakeLock.isHeld())
+        {
+        	// get lock for preview
+	        PowerManager.WakeLock old = mWakeLock;
+
 	        PowerManager pm = (PowerManager)CamActivity.this.getSystemService(Context.POWER_SERVICE);
 	        if(mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.BROADCASTRECEIVER)
 	        	mWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK|PowerManager.ACQUIRE_CAUSES_WAKEUP|PowerManager.ON_AFTER_RELEASE, "MobileWebCam");
@@ -82,8 +89,30 @@ public class CamActivity extends Activity
 	        	mWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "MobileWebCam");
 	        else
 	        	mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MobileWebCam");
+
 	        mWakeLock.acquire();
-    	}
+		    Log.v("MobileWebCam", "CamActivity WakeLock aquired!");
+		    
+		    if(old != null)
+		    	old.release();
+		    
+		    WifiManager.WifiLock oldwifi = mWifiLock;
+		    
+			ConnectivityManager connmgr = (ConnectivityManager)CamActivity.this.getSystemService(Context.CONNECTIVITY_SERVICE);
+			if(connmgr.getNetworkPreference() == ConnectivityManager.TYPE_WIFI)
+			{
+				WifiManager wmgr = (WifiManager)CamActivity.this.getSystemService(Context.WIFI_SERVICE);
+				if(mWifiLock == null || !mWifiLock.isHeld())
+				{
+					mWifiLock = wmgr.createWifiLock(WifiManager.WIFI_MODE_FULL, "MobileWebCam.CamActivity");
+					mWifiLock.acquire();
+				    Log.v("MobileWebCam", "CamActivity mWifiLock aquired!");
+				}		
+			}		    
+		    
+		    if(oldwifi != null)
+		    	oldwifi.release();
+        }
         
     	if(mPreview != null)
     		mPreview.onResume();
@@ -96,22 +125,36 @@ public class CamActivity extends Activity
     	
     	if(mPreview != null)
     		mPreview.onPause();
-
-/*    	if(mWakeLock != null)
-    	{
-			if(mWakeLock.isHeld())
-				mWakeLock.release();
-			mWakeLock = null;
-    	}*/
     }
     
     @Override
     public void onDestroy()
     {
     	super.onDestroy();
-    	
+
     	if(mPreview != null)
     		mPreview.onDestroy();
     	mPreview = null;
-    }    
+    }
+    
+    public void releaseLocks()
+    {
+		if(mWakeLock != null)
+		{
+			// release lock for preview
+			PowerManager.WakeLock tmp = mWakeLock;
+			Log.v("MobileWebCam", "CamActivity WakeLock released!");
+			mWakeLock = null;
+
+			if(tmp.isHeld())
+				tmp.release();
+
+			WifiManager.WifiLock tmpwifi = mWifiLock;
+			Log.v("MobileWebCam", "CamActivity WifiLock released!");
+			mWifiLock = null;
+
+			if(tmpwifi != null && tmpwifi.isHeld())
+				tmpwifi.release();
+		}
+    }
 }

@@ -23,7 +23,8 @@ import android.util.Log;
 
 public class NewCameraFunctions
 {
-	private static boolean mNewCameraAvailable;
+	private static boolean mNewCameraAvailable; // front camera API level 9
+	private static boolean mPictureSizesAvailable; // picture sizes API level 5
 	
 	/* establish whether the "new" class is available to us */
 	static
@@ -37,14 +38,30 @@ public class NewCameraFunctions
 		{
 			mNewCameraAvailable = false;
 		}
+
+		try
+		{
+			NewPictureSizesWrapper.checkAvailable();
+			mPictureSizesAvailable = true;
+		}
+		catch (Throwable t)
+		{
+			mPictureSizesAvailable = false;
+		}
 	}
 
-	public static List<Size> getSupportedPreviewSizes(Camera.Parameters params)
+	public static List<Size> getSupportedPictureSizes(Camera.Parameters params)
 	{
-		if(mNewCameraAvailable)
-			return NewCameraWrapper.getSupportedPreviewSizes(params);
+		if(mPictureSizesAvailable)
+			return NewPictureSizesWrapper.getSupportedPictureSizes(params);
 
 		return null;
+	}
+
+	public static void setPictureSize(Camera.Parameters params, int w, int h)
+	{
+		if(mPictureSizesAvailable)
+			NewPictureSizesWrapper.setPictureSize(params, w, h);
 	}
 	
 	public static int getNumberOfCameras()
@@ -80,7 +97,7 @@ public class NewCameraFunctions
 	public static List<String> getSupportedWhiteBalance(Camera.Parameters params)
 	{
 		if(mNewCameraAvailable)
-			return NewCameraWrapper.getSupportedWhiteBalance(params);
+			return NewPictureSizesWrapper.getSupportedWhiteBalance(params);
 		
 		return null;
 	}
@@ -88,6 +105,6 @@ public class NewCameraFunctions
 	public static void setWhiteBalance(Camera.Parameters params, String balance)
 	{
 		if(mNewCameraAvailable)
-			NewCameraWrapper.setWhiteBalance(params, balance);
+			NewPictureSizesWrapper.setWhiteBalance(params, balance);
 	}
 }

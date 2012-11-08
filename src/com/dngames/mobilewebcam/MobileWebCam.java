@@ -93,6 +93,7 @@ public class MobileWebCam extends CamActivity
 	public static boolean gInSettings = false;
 	
 	public static long gLastMotionTime = 0; 
+	public static long gLastMotionKeepAliveTime = 0; 
 	
 	public static int gCurLogMessage = 0;
 	public static String[] gLogMessages = new String[16];

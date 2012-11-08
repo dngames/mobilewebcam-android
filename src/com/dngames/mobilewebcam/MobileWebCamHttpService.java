@@ -34,6 +34,10 @@ public class MobileWebCamHttpService extends Service implements OnSharedPreferen
 	
 	public static AtomicBoolean gImageDataLock = new AtomicBoolean(false);
 	public static byte[] gImageData = null;
+	public static int gImageWidth = -1;
+	public static int gImageHeight = -1;
+	public static int gOriginalImageWidth = -1;
+	public static int gOriginalImageHeight = -1;
 	public static int gImageIndex = 0;
 	
 	public static void start(Context context)

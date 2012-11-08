@@ -57,7 +57,7 @@ class CenteredPreview extends ViewGroup implements SurfaceHolder.Callback {
     public void setCamera(Camera camera) {
         mCamera = camera;
         if (mCamera != null) {
-            mSupportedPreviewSizes = NewCameraFunctions.getSupportedPreviewSizes(camera.getParameters());
+            mSupportedPreviewSizes = CameraPreviewFunctions.getSupportedPreviewSizes(camera.getParameters());
             requestLayout();
         }
     }

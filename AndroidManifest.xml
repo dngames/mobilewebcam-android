@@ -2,21 +2,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       package="com.dngames.mobilewebcam"
       android:installLocation="auto"
-      android:versionCode="75"
-      android:versionName="2.47">
+      android:versionCode="87"
+      android:versionName="2.59">
+    
+	<supports-screens android:smallScreens="true"
+	              android:normalScreens="true"
+	              android:largeScreens="true"
+	              android:anyDensity="true"/>    	
+    
     <application
     	android:icon="@drawable/icon"
     	android:label="@string/app_name">
-<!--        	android:debuggable="true"> -->
-    	
+     	
         <activity android:name=".MobileWebCam"
                   android:label="@string/app_name"
                   android:launchMode="singleTop"
                   android:screenOrientation="landscape">
-          	<supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
             
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -28,10 +29,6 @@
                   android:label="Taking Picture"
                   android:launchMode="singleTop"
                   android:theme="@android:style/Theme.Translucent.NoTitleBar">
-          	<supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
         </activity>
 
       <service android:name="com.dngames.mobilewebcam.PhotoService"/>
@@ -40,71 +37,38 @@
 		<activity
             android:label="@string/webcam_settings"
             android:name=".SettingsTabActivity">
-          <supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
         </activity>
         
 		<activity
             android:label="@string/webcam_settings"
             android:name=".MobileWebCamSettings">
-          <supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
         </activity>
       <activity
             android:label="@string/activity_settings"
             android:name=".ActivitySettings">
-          <supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
         </activity>
       
         <activity
             android:label="@string/upload_setup"
             android:name=".UploadSetup">
-          <supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
         </activity>
         <activity
             android:label="@string/webcam_settings"
             android:name=".FTPSettings">
-          <supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
         </activity>
-
-        <activity
+      <activity
           android:label="@string/sdcard_settings"
           android:name=".SDCardSettings">
-        <supports-screens android:smallScreens="true"
-                    android:normalScreens="true"
-                    android:largeScreens="true"
-                    android:anyDensity="true"/>
       </activity>
       <activity
             android:label="@string/webcam_settings"
             android:name=".SystemSettings">
-          <supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
         </activity>
         
       <activity
             android:label="Bootup Start Mobilewebcam"
             android:name=".StartMobileWebCamAction"
             android:exported="true">
-          <supports-screens android:smallScreens="true"
-                      android:normalScreens="true"
-                      android:largeScreens="true"
-                      android:anyDensity="true"/>
         </activity>        
         
 		<receiver android:enabled="true" android:name=".BootUpReceiver"
@@ -126,6 +90,7 @@
         <intent-filter>
           <action android:name="com.dngames.mobilewebcam.START" />
           <action android:name="com.dngames.mobilewebcam.STOP" />
+          <action android:name="com.dngames.mobilewebcam.PHOTO" />
         </intent-filter>
       </receiver>
       <receiver android:name=".PhotoAlarmReceiver"/>
@@ -142,7 +107,7 @@
     <uses-sdk android:minSdkVersion="3" android:targetSdkVersion="15"/>
   
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera" android:required="false"/> // for front facing only (aka Nexus 7)
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <uses-feature android:name="android.hardware.camera.flash" android:required="false" />

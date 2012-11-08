@@ -17,10 +17,13 @@ package com.dngames.mobilewebcam;
 
 import java.util.List;
 
+import android.annotation.TargetApi;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.util.Log;
 
+
+@TargetApi(9)
 public class NewCameraWrapper
 {
 	/* calling here forces class initialization */
@@ -37,11 +40,6 @@ public class NewCameraWrapper
 		}
 
 		return 1; 
-	}
-
-	public static List<Size> getSupportedPreviewSizes(Camera.Parameters params)
-	{
-		return params.getSupportedPreviewSizes();
 	}
 	
 	public static Camera openFrontCamera()
@@ -93,30 +91,6 @@ public class NewCameraWrapper
 		try
 		{
 			params.setZoom(params.getMaxZoom() * zoom / 100);
-		}
-		catch(NoSuchMethodError e)
-		{
-		}
-	}
-
-	public static List<String> getSupportedWhiteBalance(Camera.Parameters params)
-	{
-		try
-		{
-			return params.getSupportedWhiteBalance();
-		}
-		catch(NoSuchMethodError e)
-		{
-		}
-		
-		return null;
-	}
-	
-	public static void setWhiteBalance(Camera.Parameters params, String balance)
-	{
-		try
-		{
-			params.setWhiteBalance(balance);
 		}
 		catch(NoSuchMethodError e)
 		{
