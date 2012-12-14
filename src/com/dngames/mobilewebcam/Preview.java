@@ -154,9 +154,10 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						{
 							boolean ignoreinactivity = false; 
 							long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
-							if(sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh)
+							if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh * 1000)
 							{
 								MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+								MobileWebCam.LogI("Taking keep alive picture!");
 								ignoreinactivity = true;
 							}
 							
@@ -164,10 +165,17 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 							String[] time = mSettings.mStartTime.split(":");
 							int h = 0;
 							int m = 0;
-							if(time.length > 0)
-								h = Integer.parseInt(time[0]);
-							if(time.length > 1)
-								m = Integer.parseInt(time[1]);
+							try
+							{
+								if(time.length > 0)
+									h = Integer.parseInt(time[0]);
+								if(time.length > 1)
+									m = Integer.parseInt(time[1]);
+							}
+							catch(NumberFormatException e)
+							{
+								MobileWebCam.LogE("Invalid activity start time format!");
+							}
 							int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
 							int check_dayminutes = h * 60 + m; 
 							if(cur_dayminutes >= check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
@@ -175,10 +183,17 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 								time = mSettings.mEndTime.split(":");
 								h = 24;
 								m = 0;
-								if(time.length > 0)
-									h = Integer.parseInt(time[0]);
-								if(time.length > 1)
-									m = Integer.parseInt(time[1]);
+								try
+								{
+									if(time.length > 0)
+										h = Integer.parseInt(time[0]);
+									if(time.length > 1)
+										m = Integer.parseInt(time[1]);
+								}
+								catch(NumberFormatException e)
+								{
+									MobileWebCam.LogE("Invalid activity end time format!");
+								}
 								check_dayminutes = h * 60 + m; 
 								if(cur_dayminutes < check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
 								{
@@ -223,6 +238,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 												NewCameraFunctions.setZoom(params, mSettings.mZoom);
 											if(NewCameraFunctions.getSupportedWhiteBalance(params) != null)
 												NewCameraFunctions.setWhiteBalance(params, mSettings.mWhiteBalance);
+											if(NewCameraFunctions.isFlashSupported(params))
+												NewCameraFunctions.setFlash(params, mSettings.mCameraFlash ? Camera.Parameters.FLASH_MODE_ON : Camera.Parameters.FLASH_MODE_OFF);											
 											try
 											{
 												mCamera.setParameters(params);
@@ -683,169 +700,177 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			if(mCamera == null)
 				return;
 			
-			Camera.Parameters parameters = mCamera.getParameters();
-	    	int w = parameters.getPreviewSize().width;
-	    	int h = parameters.getPreviewSize().height;
-			int format = parameters.getPreviewFormat();
-	    	int[] pixels = new int[w * h];
-	    	final int samplesize = 50;
-	    	byte[] last = new byte[samplesize * samplesize];
-			byte[] erode = new byte[samplesize * samplesize];			
-
-	    	while(!mStop)
+			try
 			{
-	    		if(mSettings.mMotionDetect)
-	    		{
-			    	if(mData[mDataLockIdx] != null)
-					{
-		    		// YUV formats require more conversion
-/*					if (format == ImageFormat.NV21 || format == ImageFormat.YUY2)// || format == ImageFormat.NV16)
-					{
-				    	// Get the YuV image
-				    	YuvImage yuv_image = new YuvImage(mMyData, format, w, h, null);
-				    	// Convert YuV to Jpeg
-						Rect rect = new Rect(0, 0, w, h);
-						ByteArrayOutputStream output_stream = new ByteArrayOutputStream();
-						yuv_image.compressToJpeg(rect, 100, output_stream);
-						// Convert from Jpeg to Bitmap
-						mPreviewBitmap = BitmapFactory.decodeByteArray(output_stream.toByteArray(), 0, output_stream.size());
-					}
-					// Jpeg and RGB565 are supported by BitmapFactory.decodeByteArray
-					else// if (format == ImageFormat.JPEG || format == ImageFormat.RGB_565)
-					{
-						mPreviewBitmap = BitmapFactory.decodeByteArray(mMyData, 0, mMyData.length);
-					}
-					if(mPreviewBitmap != null)
-						next = mPreviewBitmap.copy(mPreviewBitmap.getConfig(), false);*/
-				
-						MobileWebCam.decodeYUV420SPGrayscale(pixels, mData[mDataLockIdx], w, h);
-					}
-		    		mDataLockIdx = (mDataLockIdx + 1) % DATACOUNT;
-
-		    		if(MobileWebCam.DEBUG_MOTIONDETECT)
-		    			mPreviewBitmapLock.set(true);
-					{
+				Camera.Parameters parameters = mCamera.getParameters();
+		    	int w = parameters.getPreviewSize().width;
+		    	int h = parameters.getPreviewSize().height;
+				int format = parameters.getPreviewFormat();
+		    	int[] pixels = new int[w * h];
+		    	final int samplesize = 50;
+		    	byte[] last = new byte[samplesize * samplesize];
+				byte[] erode = new byte[samplesize * samplesize];			
+	
+		    	while(!mStop)
+				{
+		    		if(mSettings.mMotionDetect)
+		    		{
+				    	if(mData[mDataLockIdx] != null)
+						{
+			    		// YUV formats require more conversion
+	/*					if (format == ImageFormat.NV21 || format == ImageFormat.YUY2)// || format == ImageFormat.NV16)
+						{
+					    	// Get the YuV image
+					    	YuvImage yuv_image = new YuvImage(mMyData, format, w, h, null);
+					    	// Convert YuV to Jpeg
+							Rect rect = new Rect(0, 0, w, h);
+							ByteArrayOutputStream output_stream = new ByteArrayOutputStream();
+							yuv_image.compressToJpeg(rect, 100, output_stream);
+							// Convert from Jpeg to Bitmap
+							mPreviewBitmap = BitmapFactory.decodeByteArray(output_stream.toByteArray(), 0, output_stream.size());
+						}
+						// Jpeg and RGB565 are supported by BitmapFactory.decodeByteArray
+						else// if (format == ImageFormat.JPEG || format == ImageFormat.RGB_565)
+						{
+							mPreviewBitmap = BitmapFactory.decodeByteArray(mMyData, 0, mMyData.length);
+						}
+						if(mPreviewBitmap != null)
+							next = mPreviewBitmap.copy(mPreviewBitmap.getConfig(), false);*/
+					
+							MobileWebCam.decodeYUV420SPGrayscale(pixels, mData[mDataLockIdx], w, h);
+						}
+			    		mDataLockIdx = (mDataLockIdx + 1) % DATACOUNT;
+	
 			    		if(MobileWebCam.DEBUG_MOTIONDETECT)
-			    		{
-							if(mPreviewBitmap == null)
-								mPreviewBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-							mPreviewBitmap.setPixels(pixels, 0, w, 0, 0, w, h);
-			    		}
-				
-						float sx = (float)w / (float)samplesize;
-						float sy = (float)h / (float)samplesize;
-						
-						// erode
-						for(int x = 0; x < samplesize; x++)
+			    			mPreviewBitmapLock.set(true);
 						{
-							for(int y = 0; y < samplesize; y++)
+				    		if(MobileWebCam.DEBUG_MOTIONDETECT)
+				    		{
+								if(mPreviewBitmap == null)
+									mPreviewBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+								mPreviewBitmap.setPixels(pixels, 0, w, 0, 0, w, h);
+				    		}
+					
+							float sx = (float)w / (float)samplesize;
+							float sy = (float)h / (float)samplesize;
+							
+							// erode
+							for(int x = 0; x < samplesize; x++)
 							{
-								int color = 0;
-								for(int nx = x - 1; nx < x + 1; nx++)
+								for(int y = 0; y < samplesize; y++)
 								{
-									for(int ny = y - 1; ny < y + 1; ny++)
+									int color = 0;
+									for(int nx = x - 1; nx < x + 1; nx++)
 									{
-										int c = pixels[(int)(x * sx) + (int)(y * sy) * w] & 0xFF;
-										color = Math.max(color, c);
+										for(int ny = y - 1; ny < y + 1; ny++)
+										{
+											int c = pixels[(int)(x * sx) + (int)(y * sy) * w] & 0xFF;
+											color = Math.max(color, c);
+										}
 									}
-								}
-								erode[x + y * samplesize] = (byte)color;
-							}
-						}
-						// diff
-						int diffcnt = 0;
-						for(int x = 0; x < samplesize; x++)
-						{
-							for(int y = 0; y < samplesize; y++)
-							{
-								int diff = Math.abs((int)erode[x + y * samplesize] - (int)last[x + y * samplesize]);
-								if(diff > mSettings.mMotionColorChange)
-								{
-						    		if(MobileWebCam.DEBUG_MOTIONDETECT)
-						    			mPreviewBitmap.setPixel((int)(x * sx), (int)(y * sy), Color.argb(255, 255, 0, 0));
-									diffcnt++;
+									erode[x + y * samplesize] = (byte)color;
 								}
 							}
-						}
-						if(diffcnt > mSettings.mMotionPixels) // attention depends on samplesize of 50
-						{
-
-							long lasttime = MobileWebCam.gLastMotionTime; 
-							MobileWebCam.gLastMotionKeepAliveTime = MobileWebCam.gLastMotionTime = System.currentTimeMillis();
-							if(MobileWebCam.gLastMotionTime - lasttime >= mSettings.mRefreshDuration * 2)
+							// diff
+							int diffcnt = 0;
+							for(int x = 0; x < samplesize; x++)
 							{
-								mHandler.removeCallbacks(mPostPicture);
-								mHandler.post(mPostPicture);
-
-								mHandler.post(new Runnable() {
-									@Override
-									public void run()
+								for(int y = 0; y < samplesize; y++)
+								{
+									int diff = Math.abs((int)erode[x + y * samplesize] - (int)last[x + y * samplesize]);
+									if(diff > mSettings.mMotionColorChange)
 									{
-										mActivity.mMotionTextView.setText("Motion Detected!");
-										if(!mSettings.mNoToasts)
-											Toast.makeText(mActivity, "Motion detected!", Toast.LENGTH_SHORT).show();
+							    		if(MobileWebCam.DEBUG_MOTIONDETECT)
+							    			mPreviewBitmap.setPixel((int)(x * sx), (int)(y * sy), Color.argb(255, 255, 0, 0));
+										diffcnt++;
 									}
-								});
+								}
+							}
+							if(diffcnt > mSettings.mMotionPixels) // attention depends on samplesize of 50
+							{
+	
+								long lasttime = MobileWebCam.gLastMotionTime; 
+								MobileWebCam.gLastMotionKeepAliveTime = MobileWebCam.gLastMotionTime = System.currentTimeMillis();
+								if(MobileWebCam.gLastMotionTime - lasttime >= mSettings.mRefreshDuration * 2)
+								{
+									mHandler.removeCallbacks(mPostPicture);
+									mHandler.post(mPostPicture);
+	
+									mHandler.post(new Runnable() {
+										@Override
+										public void run()
+										{
+											mActivity.mMotionTextView.setText("Motion Detected!");
+											if(!mSettings.mNoToasts)
+												Toast.makeText(mActivity, "Motion detected!", Toast.LENGTH_SHORT).show();
+										}
+									});
+								}
+								else
+								{
+									final int d = diffcnt;
+									mHandler.post(new Runnable() {
+										@Override
+										public void run()
+										{
+											mActivity.mMotionTextView.setText("Moved pixels: " + d + "  motion detected right now!");
+										}
+									});
+								}
 							}
 							else
 							{
+								final long sincelastmotion = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
+								if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastmotion >= mSettings.mMotionDetectKeepAliveRefresh * 1000)
+								{
+									MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+									MobileWebCam.LogI("Taking keep alive picture!");
+
+									// keep alive picture
+									mHandler.removeCallbacks(mPostPicture);
+									mHandler.post(mPostPicture);
+								}
 								final int d = diffcnt;
 								mHandler.post(new Runnable() {
 									@Override
 									public void run()
 									{
-										mActivity.mMotionTextView.setText("Moved pixels: " + d + "  motion detected right now!");
+										mActivity.mMotionTextView.setText("Moved pixels: " + d + "  last movement: " + sincelastmotion);
 									}
 								});
 							}
 						}
-						else
-						{
-							final long sincelastmotion = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
-							if(sincelastmotion >= mSettings.mMotionDetectKeepAliveRefresh)
-							{
-								MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
-								
-								// keep alive picture
-								mHandler.removeCallbacks(mPostPicture);
-								mHandler.post(mPostPicture);
-							}
-							final int d = diffcnt;
-							mHandler.post(new Runnable() {
-								@Override
-								public void run()
-								{
-									mActivity.mMotionTextView.setText("Moved pixels: " + d + "  last movement: " + sincelastmotion);
-								}
-							});
+			    		if(MobileWebCam.DEBUG_MOTIONDETECT)
+			    			mPreviewBitmapLock.set(false);
+						
+						System.arraycopy(erode, 0, last, 0, samplesize * samplesize);
+		    		}
+		    		else
+		    		{
+		    			try {
+							Thread.sleep(5000);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
 						}
-					}
-		    		if(MobileWebCam.DEBUG_MOTIONDETECT)
-		    			mPreviewBitmapLock.set(false);
-					
-					System.arraycopy(erode, 0, last, 0, samplesize * samplesize);
-	    		}
-	    		else
+		    		}
+				}
+		    	
+		    	// finish
+	    		if(MobileWebCam.DEBUG_MOTIONDETECT)
 	    		{
-	    			try {
-						Thread.sleep(5000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+					mPreviewBitmapLock.set(true);
+					{
+						if(mPreviewBitmap != null)
+							mPreviewBitmap.recycle();
+						mPreviewBitmap = null;
 					}
+					mPreviewBitmapLock.set(false);
 	    		}
 			}
-	    	
-	    	// finish
-    		if(MobileWebCam.DEBUG_MOTIONDETECT)
-    		{
-				mPreviewBitmapLock.set(true);
-				{
-					if(mPreviewBitmap != null)
-						mPreviewBitmap.recycle();
-					mPreviewBitmap = null;
-				}
-				mPreviewBitmapLock.set(false);
-    		}
+			catch(OutOfMemoryError e)
+			{
+				MobileWebCam.LogE("Out of memory for preview image checker!");
+			}
 		}
 	}
 	
@@ -925,10 +950,13 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 							@Override
 							public void onPreviewFrame(byte[] data, Camera camera)
 							{
-								int d = (mPreviewChecker.mDataLockIdx + 1) % mPreviewChecker.DATACOUNT;
-								if(mPreviewChecker.mData[d] == null)
-									mPreviewChecker.mData[d] = new byte[data.length];
-								System.arraycopy(data, 0, mPreviewChecker.mData[d], 0, data.length);
+								if(mPreviewChecker != null && mPreviewChecker.mData != null)
+								{
+									int d = (mPreviewChecker.mDataLockIdx + 1) % mPreviewChecker.DATACOUNT;
+									if(mPreviewChecker.mData[d] == null)
+										mPreviewChecker.mData[d] = new byte[data.length];
+									System.arraycopy(data, 0, mPreviewChecker.mData[d], 0, data.length);
+								}
 								if(MobileWebCam.DEBUG_MOTIONDETECT && mActivity.mDrawOnTop != null)
 									mActivity.mDrawOnTop.invalidate();
 							}
@@ -972,6 +1000,12 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	
 	public static void sharePicture(Context c, PhotoSettings s, byte[] data)
 	{
+		if(c == null)
+		{
+			MobileWebCam.LogE("Unable to share picture: Context is null!");
+			return;
+		}
+		
 		sharePictureNow = false;
 		
 		FileOutputStream out = null;

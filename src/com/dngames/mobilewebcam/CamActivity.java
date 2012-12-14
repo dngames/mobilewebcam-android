@@ -91,7 +91,7 @@ public class CamActivity extends Activity
 	        	mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MobileWebCam");
 
 	        mWakeLock.acquire();
-		    Log.v("MobileWebCam", "CamActivity WakeLock aquired!");
+//		    Log.v("MobileWebCam", "CamActivity WakeLock aquired!");
 		    
 		    if(old != null)
 		    	old.release();
@@ -106,7 +106,7 @@ public class CamActivity extends Activity
 				{
 					mWifiLock = wmgr.createWifiLock(WifiManager.WIFI_MODE_FULL, "MobileWebCam.CamActivity");
 					mWifiLock.acquire();
-				    Log.v("MobileWebCam", "CamActivity mWifiLock aquired!");
+//				    Log.v("MobileWebCam", "CamActivity mWifiLock aquired!");
 				}		
 			}		    
 		    
@@ -143,14 +143,14 @@ public class CamActivity extends Activity
 		{
 			// release lock for preview
 			PowerManager.WakeLock tmp = mWakeLock;
-			Log.v("MobileWebCam", "CamActivity WakeLock released!");
+//			Log.v("MobileWebCam", "CamActivity WakeLock released!");
 			mWakeLock = null;
 
 			if(tmp.isHeld())
 				tmp.release();
 
 			WifiManager.WifiLock tmpwifi = mWifiLock;
-			Log.v("MobileWebCam", "CamActivity WifiLock released!");
+//			Log.v("MobileWebCam", "CamActivity WifiLock released!");
 			mWifiLock = null;
 
 			if(tmpwifi != null && tmpwifi.isHeld())

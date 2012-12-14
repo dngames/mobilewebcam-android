@@ -96,4 +96,28 @@ public class NewCameraWrapper
 		{
 		}
 	}
+	
+	public static boolean isFlashSupported(Camera.Parameters params)
+	{
+		try
+		{
+			return params.getSupportedFlashModes() != null;
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+		
+		return false;
+	}
+	
+	public static void setFlash(Camera.Parameters params, String flashmode)
+	{
+		try
+		{
+			params.setFlashMode(flashmode);
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+	}
 }

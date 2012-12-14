@@ -53,6 +53,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -63,6 +64,7 @@ import android.widget.Toast;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowManager;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup.LayoutParams;
@@ -84,7 +86,8 @@ public class MobileWebCam extends CamActivity
     private static final int MENU_SET_FRONT_BACK = 3;
     private static final int MENU_SET_ZOOM = 4;
     private static final int MENU_SET_WHITEBALANCE = 5;
-    private static final int MENU_SETTINGS = 6;
+    private static final int MENU_SET_FLASH = 6;
+    private static final int MENU_SETTINGS = 7;
 
 	public static int gUploadingCount = 0;
 	public static int gPictureCounter = 0;
@@ -121,40 +124,55 @@ public class MobileWebCam extends CamActivity
     		gCurLogMessage = 0;
     }
     
+    private void addMenuItem(Menu menu, int id, String text, int icon)
+    {
+    	MenuItem item = menu.add(0, id, 0, text);
+//    	item.setAlphabeticShortcut('a');
+    	item.setIcon(icon);
+    	HoneyCombFunctions.setShowAsAction(item, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+    }
+    
     @Override
     public boolean onPrepareOptionsMenu(Menu menu)
     {
     	boolean r = super.onPrepareOptionsMenu(menu);
 
 		menu.clear();
-		if(!mSettings.mURL.equals(mSettings.mDefaulturl) && mSettings.mUploadPictures)
+    	
+		addMenuItem(menu, MENU_SETTINGS, "Change Settings", android.R.drawable.ic_menu_preferences);
+
+		if(mSettings.mMobileWebCamEnabled)
+			addMenuItem(menu, MENU_SET_ON_OFFLINE, "Set OFFLINE", android.R.drawable.ic_menu_close_clear_cancel);
+		else
+			addMenuItem(menu, MENU_SET_ON_OFFLINE, "Enable Camera", android.R.drawable.ic_menu_slideshow);
+
+    	if(!mSettings.mURL.equals(mSettings.mDefaulturl) && mSettings.mUploadPictures)
 		{
 			if(mSettings.mEmailReceiverAddress.length() > 0 && mSettings.mMailPictures)
-				menu.add(0, MENU_SHARE_URL, 0, "Share URL").setIcon(android.R.drawable.ic_menu_send);
+				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_send);
 			else
-				menu.add(0, MENU_SHARE_URL, 0, "Share URL").setIcon(android.R.drawable.ic_menu_share);
+				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_share);
 		}
 		if(mSettings.mMode == Mode.MANUAL || mSettings.mMode == Mode.NORMAL)
-			menu.add(0, MENU_SHARE_IMAGE, 0, "Share Image").setIcon(android.R.drawable.ic_menu_gallery);
-		if(mSettings.mMobileWebCamEnabled)
-			menu.add(0, MENU_SET_ON_OFFLINE, 0, "Set OFFLINE").setIcon(android.R.drawable.ic_menu_close_clear_cancel);
-		else
-			menu.add(0, MENU_SET_ON_OFFLINE, 0, "Enable Camera").setIcon(android.R.drawable.ic_menu_slideshow);
-    	if(NewCameraFunctions.getNumberOfCameras() > 1)
-        	menu.add(0, MENU_SET_FRONT_BACK, 0, "Toggle Front/Back Camera").setIcon(android.R.drawable.ic_menu_camera);
+			addMenuItem(menu, MENU_SHARE_IMAGE, "Share Image", android.R.drawable.ic_menu_gallery);
+    	
+		if(NewCameraFunctions.getNumberOfCameras() > 1)
+    		addMenuItem(menu, MENU_SET_FRONT_BACK, "Toggle Front/Back Camera", android.R.drawable.ic_menu_camera);
     	if(mPreview != null && mPreview.mCamera != null)
     	{
     		Camera.Parameters params = mPreview.mCamera.getParameters();
     		if(params != null)
     		{
     			if(NewCameraFunctions.isZoomSupported(params))
-    				menu.add(0, MENU_SET_ZOOM, 0, "Zoom In").setIcon(android.R.drawable.ic_menu_crop);
+    				addMenuItem(menu, MENU_SET_ZOOM, "Zoom In", android.R.drawable.ic_menu_crop);
     			menuWhiteBalanceModes = NewCameraFunctions.getSupportedWhiteBalance(params);
     			if(menuWhiteBalanceModes != null)
-    				menu.add(0, MENU_SET_WHITEBALANCE, 0, "White Balance").setIcon(android.R.drawable.ic_menu_view);
+    				addMenuItem(menu, MENU_SET_WHITEBALANCE, "White Balance", android.R.drawable.ic_menu_view);
+
+    	    	if(NewCameraFunctions.isFlashSupported(params))
+    	    		addMenuItem(menu, MENU_SET_FLASH, "Toggle Camera Flashlight", android.R.drawable.ic_dialog_alert);
     		}
     	}
-		menu.add(0, MENU_SETTINGS, 0, "Change Settings").setIcon(android.R.drawable.ic_menu_preferences);
 
 		return r;
     }
@@ -200,6 +218,9 @@ public class MobileWebCam extends CamActivity
 		        		mPreview.RestartCamera();
 		        	}
 		        }
+		        
+	        	HoneyCombFunctions.invalidateOptionsMenu(MobileWebCam.this);
+		        
 	        	return true;
 	        	
 	        case MENU_SET_ZOOM:
@@ -235,9 +256,24 @@ public class MobileWebCam extends CamActivity
 	        	SharedPreferences.Editor edit = mPrefs.edit();
 	        	edit.putString("whitebalance", "" + mSettings.mWhiteBalance);
 	        	edit.commit();
+	        	return true;
 	        }
-        	return true;
 	        	
+	        case MENU_SET_FLASH:
+		        {
+		        	mSettings.mCameraFlash = !mSettings.mCameraFlash;
+		        	
+		        	SharedPreferences.Editor edit = mPrefs.edit();
+		        	edit.putBoolean("cam_flash", mSettings.mCameraFlash);
+		        	edit.commit();
+		        	
+		        	if(mPreview != null)
+		        	{
+		        		mPreview.RestartCamera();
+		        	}
+		        }
+		        return true;
+
 	        case MENU_SET_ON_OFFLINE:
 	        	if(mSettings.mMobileWebCamEnabled)
 	        	{
@@ -247,7 +283,7 @@ public class MobileWebCam extends CamActivity
 		        		mPreview.offline(true);
 
 					PhotoAlarmReceiver.StopNotification(MobileWebCam.this);
-	        	}
+				}
 	        	else
 	        	{
 	        		mSettings.EnableMobileWebCam(true);
@@ -255,6 +291,8 @@ public class MobileWebCam extends CamActivity
 	        		if(mPreview != null)
 		        		mPreview.online();
 	        	}
+
+	        	HoneyCombFunctions.invalidateOptionsMenu(MobileWebCam.this);
 	        	
 	        	return true;
 	        	
@@ -273,6 +311,22 @@ public class MobileWebCam extends CamActivity
         
 		mPrefs.registerOnSharedPreferenceChangeListener(this);            
         onSharedPreferenceChanged(mPrefs, null);
+        
+/*        try
+        {
+        	// show overflow menu ... always (even on devices with menu button)
+            ViewConfiguration config = ViewConfiguration.get(this);
+            Field menuKeyField = ViewConfiguration.class.getDeclaredField("sHasPermanentMenuKey");
+            if(menuKeyField != null)
+            {
+                menuKeyField.setAccessible(true);
+                menuKeyField.setBoolean(config, false);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Ignore
+        }*/        
         
         Button b = (Button)findViewById(R.id.configure);
         b.setVisibility(View.VISIBLE);
@@ -301,6 +355,8 @@ public class MobileWebCam extends CamActivity
     	super.onResume();
     	
     	gIsRunning = true;
+    	
+    	MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
     }
 
     @Override

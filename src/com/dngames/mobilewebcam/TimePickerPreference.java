@@ -74,14 +74,23 @@ public class TimePickerPreference extends DialogPreference
  
 		mTP = new TimePicker(getContext());
  
+		boolean is24hour = DateFormat.is24HourFormat(mTP.getContext());
+		
 		int h = getHour();
 		int m = getMinute();
-		if (h >= 0 && m >= 0) {
+		if (h >= 0 && h <= (is24hour ? 24 : 12))
 			mTP.setCurrentHour(h);
+		if (m >= 0 && m <= 60)
 			mTP.setCurrentMinute(m);
-		}
 		
-		mTP.setIs24HourView(DateFormat.is24HourFormat(mTP.getContext()));
+		try
+		{
+			mTP.setIs24HourView(is24hour);
+		}
+		catch(IllegalArgumentException e)
+		{
+			e.printStackTrace();
+		}
  
 		return mTP;
 	}
