@@ -121,6 +121,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public boolean mFrontCamera = false;
 	public int mZoom = 0;
 	public String mWhiteBalance = Camera.Parameters.WHITE_BALANCE_AUTO;
+	public boolean mCameraFlash = false;
 	
 	public String mMailAddress = "";
 	public String mMailPassword = "";
@@ -234,6 +235,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         mAutoFocus = prefs.getBoolean("picture_autofocus", false);
         
         mFrontCamera = prefs.getBoolean("cam_front", false);
+        mCameraFlash = prefs.getBoolean("cam_flash", false);
         mZoom = getEditInt(mContext, prefs, "zoom", 0);        
         mWhiteBalance = prefs.getString("whitebalance", Camera.Parameters.WHITE_BALANCE_AUTO);
         

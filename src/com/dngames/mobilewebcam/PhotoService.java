@@ -206,6 +206,8 @@ public class PhotoService// implements SurfaceHolder.Callback
 					NewCameraFunctions.setZoom(params, mSettings.mZoom);
 				if(NewCameraFunctions.getSupportedWhiteBalance(params) != null)
 					NewCameraFunctions.setWhiteBalance(params, mSettings.mWhiteBalance);
+				if(NewCameraFunctions.isFlashSupported(params))
+					NewCameraFunctions.setFlash(params, mSettings.mCameraFlash ? Camera.Parameters.FLASH_MODE_ON : Camera.Parameters.FLASH_MODE_OFF);
 				try
 				{
 					mCamera.setParameters(params);
@@ -222,8 +224,16 @@ public class PhotoService// implements SurfaceHolder.Callback
 /*			if(mSettings.mAutoFocus)
 				mCamera.autoFocus(autofocusCallback);
 			else*/
+			try
+			{
 				mCamera.takePicture(shutterCallback, null, photoCallback);
-			Log.i("MobileWebCam", "takePicture done");
+				Log.i("MobileWebCam", "takePicture done");
+			}
+			catch(RuntimeException e)
+			{
+				MobileWebCam.LogE("takePicture failed!");
+				e.printStackTrace();
+			}
 		}
 		else
 		{

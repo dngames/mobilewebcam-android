@@ -107,4 +107,18 @@ public class NewCameraFunctions
 		if(mNewCameraAvailable)
 			NewPictureSizesWrapper.setWhiteBalance(params, balance);
 	}
+	
+	public static boolean isFlashSupported(Camera.Parameters params)
+	{
+		if(mNewCameraAvailable)
+			return NewCameraWrapper.isFlashSupported(params);
+		
+		return false;
+	}
+	
+	public static void setFlash(Camera.Parameters params, String flashmode)
+	{
+		if(mNewCameraAvailable)
+			NewCameraWrapper.setFlash(params, flashmode);
+	}
 }

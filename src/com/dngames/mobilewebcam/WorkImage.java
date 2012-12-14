@@ -553,9 +553,10 @@ public class WorkImage implements Runnable, LocationListener
 		{
 			boolean ignoreinactivity = false; 
 			long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
-			if(sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh)
+			if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh * 1000)
 			{
 				MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+				MobileWebCam.LogI("Taking keep alive picture!");
 				ignoreinactivity = true;
 			}
 

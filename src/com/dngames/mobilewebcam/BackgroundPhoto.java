@@ -39,9 +39,11 @@ public class BackgroundPhoto implements ITextUpdater
 	{
 		boolean ignoreinactivity = false; 
 		long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
-		if(sincelastalive >= PhotoSettings.getEditInt(context, prefs, "motion_keepalive_refresh", 3600))
+		long keepalivetime = PhotoSettings.getEditInt(context, prefs, "motion_keepalive_refresh", 3600);
+		if(keepalivetime > 0 && sincelastalive >= keepalivetime * 1000)
 		{
 			MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+			MobileWebCam.LogI("Taking keep alive picture!");
 			ignoreinactivity = true;
 		}
 		
@@ -49,14 +51,38 @@ public class BackgroundPhoto implements ITextUpdater
 		String endTime = prefs.getString("activity_endtime", "24:00");
 
 		Date date = new Date();
-		int h = Integer.parseInt(startTime.split(":")[0]);
-		int m = Integer.parseInt(startTime.split(":")[1]);
+		String[] time = startTime.split(":");
+		int h = 0;
+		int m = 0;
+		try
+		{
+			if(time.length > 0)
+				h = Integer.parseInt(time[0]);
+			if(time.length > 1)
+				m = Integer.parseInt(time[1]);
+		}
+		catch(NumberFormatException e)
+		{
+			MobileWebCam.LogE("Invalid activity start time format!");
+		}
 		int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
 		int check_dayminutes = h * 60 + m; 
 		if(cur_dayminutes >= check_dayminutes || startTime.equals(endTime) || ignoreinactivity)
 		{
-			h = Integer.parseInt(endTime.split(":")[0]);
-			m = Integer.parseInt(endTime.split(":")[1]);
+			time = endTime.split(":");
+			h = 24;
+			m = 0;
+			try
+			{
+				if(time.length > 0)
+					h = Integer.parseInt(time[0]);
+				if(time.length > 1)
+					m = Integer.parseInt(time[1]);
+			}
+			catch(NumberFormatException e)
+			{
+				MobileWebCam.LogE("Invalid activity end time format!");
+			}
 			check_dayminutes = h * 60 + m; 
 			if(cur_dayminutes < check_dayminutes || startTime.equals(endTime) || ignoreinactivity)
 			{
