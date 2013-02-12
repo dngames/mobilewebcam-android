@@ -62,6 +62,11 @@ public class SettingsTabActivity extends TabActivity
         spec.setIndicator("Picture", getResources().getDrawable(android.R.drawable.ic_menu_camera));
         tabHost.addTab(spec);
 
+        intent = new Intent().setClass(this, RemoteControlSettings.class);
+        spec = tabHost.newTabSpec("Remote Control").setContent(intent);
+        spec.setIndicator("Remote Control", getResources().getDrawable(android.R.drawable.ic_menu_call));
+        tabHost.addTab(spec);
+
         intent = new Intent().setClass(this, SystemSettings.class);
         spec = tabHost.newTabSpec("System").setContent(intent);
         spec.setIndicator("System", getResources().getDrawable(android.R.drawable.ic_menu_preferences));

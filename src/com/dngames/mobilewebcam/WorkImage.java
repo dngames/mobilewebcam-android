@@ -553,25 +553,39 @@ public class WorkImage implements Runnable, LocationListener
 		{
 			boolean ignoreinactivity = false; 
 			long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
-			if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh * 1000)
+			if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh)
 			{
 				MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
 				MobileWebCam.LogI("Taking keep alive picture!");
 				ignoreinactivity = true;
 			}
 
-// TODO: do night detection on own downsampled image from mData to 100x100 for all sizes if! gBmp == null
-			if(mSettings.mNightDetect && isNightImage(gBmp) && !ignoreinactivity)
+			// TODO: do night detection on own downsampled image from mData to 100x100 for all sizes if! gBmp == null
+			if(mSettings.mNightAutoFlash)
 			{
-				Preview.mPhotoLock.set(false);
-				MobileWebCam.LogI("Dropping night image.");
-				Log.i("MobileWebCam", "PhotoLock released!");
-				mTextUpdater.JobFinished();
-				if(locationManager != null)
-					locationManager.removeUpdates(this);
-				gBmp.recycle();
-				gBmp = null;
-				return;
+				// detect if flash is required
+				boolean imagedark = isNightImage(gBmp);
+				if(mSettings.mCameraFlash != imagedark)
+				{
+					mSettings.setCameraFlash(imagedark);
+					// take next picture with changed flash!
+					MobileWebCam.LogI("FLASH auto changed");
+				}
+			}
+			else if(mSettings.mNightDetect)
+			{
+				if(isNightImage(gBmp) && !ignoreinactivity)
+				{
+					Preview.mPhotoLock.set(false);
+					MobileWebCam.LogI("Dropping night image.");
+					Log.i("MobileWebCam", "PhotoLock released!");
+					mTextUpdater.JobFinished();
+					if(locationManager != null)
+						locationManager.removeUpdates(this);
+					gBmp.recycle();
+					gBmp = null;
+					return;
+				}
 			}
 			
 			boolean rotate = mSettings.mForcePortraitImages && !mSettings.mFrontCamera;

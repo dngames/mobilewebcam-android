@@ -106,13 +106,6 @@ public class SystemSettings extends PreferenceActivity implements OnSharedPrefer
 	 
      public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
      {
-       	 if(key.equals("server_enabled"))
-       	 {
-       		 if(sharedPreferences.getBoolean(key, true))
-   				 MobileWebCamHttpService.start(SystemSettings.this);
-       		 else
-   				 MobileWebCamHttpService.stop(SystemSettings.this);
-       	 }
      }
      
     @Override
@@ -120,59 +113,4 @@ public class SystemSettings extends PreferenceActivity implements OnSharedPrefer
         getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
         super.onDestroy();
     }
-
-    public static String getLocalIpAddress(Context c)
-    {
-		ConnectivityManager connManager = (ConnectivityManager)c.getSystemService(CONNECTIVITY_SERVICE);
-		NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-		if(mWifi.isConnected())
-		{
-			try
-			{
-				for(Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();)
-				{
-					NetworkInterface intf = en.nextElement();
-					for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();)
-					{
-						InetAddress inetAddress = enumIpAddr.nextElement();
-						String ipv4 = null;
-						if (!inetAddress.isLoopbackAddress() && InetAddressUtils.isIPv4Address(ipv4=inetAddress.getHostAddress()))
-							return ipv4;
-					}
-				}
-			}
-			catch (SocketException ex)
-			{
-				Log.e("RemoteLogCat", ex.toString());
-			}
-		}
-        return null;
-    }
-
-    private void setIP()
-    {
-		final String myIP = getLocalIpAddress(SystemSettings.this);
-		if(myIP != null)
-		{
-			final SharedPreferences prefs = getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
-			getPreferenceManager().findPreference("info_ip").setTitle("http://" + myIP + ":" + MobileWebCamHttpService.getPort(prefs));
-	
-	        getPreferenceManager().findPreference("info_ip").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-		         @Override
-		         public boolean onPreferenceClick(Preference preference) {
-		             final Intent emailIntent = new Intent(android.content.Intent.ACTION_SEND);
-		             emailIntent.setType("text/html");
-		             emailIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "Your MobileWebCam URL");
-		             emailIntent.putExtra(android.content.Intent.EXTRA_TEXT, "http://" + myIP + ":" + MobileWebCamHttpService.getPort(prefs));
-		             startActivity(Intent.createChooser(emailIntent, "Send URL via email:"));
-		             return true;
-		         }
-	       });
-		}
-		else
-		{
-			getPreferenceManager().findPreference("info_ip").setTitle("no WIFI connection");
-			getPreferenceManager().findPreference("info_ip").setEnabled(false);
-		}
-	}
 };

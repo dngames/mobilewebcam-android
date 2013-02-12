@@ -61,7 +61,7 @@
 	<PreferenceScreen
 		xmlns:android="http://schemas.android.com/apk/res/android"
 		android:title="Image Imprint">
-
+	    
 		<PreferenceCategory
 			android:title="Date and Time">
 			

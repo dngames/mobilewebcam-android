@@ -16,6 +16,7 @@
 package com.dngames.mobilewebcam;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -23,6 +24,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.SocketException;
@@ -34,6 +37,20 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.BufferedHttpEntity;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.impl.client.AbstractHttpClient;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
 
 import android.app.IntentService;
 import android.app.Notification;
@@ -119,7 +136,7 @@ public class PhotoService// implements SurfaceHolder.Callback
 		
 		try
 		{
-			if(mSettings.mFrontCamera)
+			if(mSettings.mFrontCamera || NewCameraFunctions.getNumberOfCameras() == 1 && NewCameraFunctions.isFrontCamera(0))
 			{
 				Log.v("MobileWebCam", "Trying to open CAMERA 1!");
 				mCamera = NewCameraFunctions.openFrontCamera();
@@ -535,6 +552,9 @@ public class PhotoService// implements SurfaceHolder.Callback
 			MobileWebCam.gUploadingCount--;
 			
 			mTextUpdater.UpdateText();
+
+			PhotoSettings.GETSettings(mContext);
+			
 			mTextUpdater.JobFinished();											
 			
 			return(null);
@@ -614,6 +634,8 @@ public class PhotoService// implements SurfaceHolder.Callback
 			}
 			
 			SaveLocked.set(false);
+
+			PhotoSettings.GETSettings(mContext);
 
 			mTextUpdater.JobFinished();											
 			

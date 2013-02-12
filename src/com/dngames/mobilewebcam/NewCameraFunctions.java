@@ -72,6 +72,14 @@ public class NewCameraFunctions
 		return 1;
 	}
 	
+	public static boolean isFrontCamera(int camIdx)
+	{
+		if(mNewCameraAvailable)
+			return NewCameraWrapper.isFrontCamera(camIdx);
+
+		return false;
+	}
+
 	public static Camera openFrontCamera()
 	{
 		if(mNewCameraAvailable)

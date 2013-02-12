@@ -159,6 +159,8 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[3];
 		else if(mSettings.mMode == Mode.BROADCASTRECEIVER)
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[4];
+		if(mSettings.mMotionDetect)
+			msg += " detect motion";
 		float usedMegs = (float)Debug.getNativeHeapAllocatedSize() / (float)1048576L;
 		msg += String.format("<br>Memory used: %.2f MB", usedMegs);
 		msg += String.format("<br>Used upload image size: %d x %d (from %d x %d)", MobileWebCamHttpService.gImageWidth, MobileWebCamHttpService.gImageHeight, MobileWebCamHttpService.gOriginalImageWidth, MobileWebCamHttpService.gOriginalImageHeight);
@@ -196,7 +198,7 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 	    
 	    msg += "<hr>";
 		
-		msg += "<p>MJPEG motion picture URL is:<br><a href=\'/mjpeg\'>http://" + SystemSettings.getLocalIpAddress(mContext) + "/mjpeg</a></p>";
+		msg += "<p>MJPEG motion picture URL is:<br><a href=\'/mjpeg\'>http://" + RemoteControlSettings.getLocalIpAddress(mContext) + "/mjpeg</a></p>";
 		msg += "<p>To use your phone with Skype or other programs on your PC you need to install a mjpeg webcam driver like this one: <a href='http://www.webcamxp.com/download.aspx'>http://www.webcamxp.com/download.aspx</a> - then you enter the URL shown above there.</p>";		
 		
 		msg += "</td><td>";

@@ -124,12 +124,12 @@ public class MobileWebCam extends CamActivity
     		gCurLogMessage = 0;
     }
     
-    private void addMenuItem(Menu menu, int id, String text, int icon)
+    private void addMenuItem(Menu menu, int id, String text, int icon, int show)
     {
     	MenuItem item = menu.add(0, id, 0, text);
 //    	item.setAlphabeticShortcut('a');
     	item.setIcon(icon);
-    	HoneyCombFunctions.setShowAsAction(item, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+    	HoneyCombFunctions.setShowAsAction(item, show);
     }
     
     @Override
@@ -139,38 +139,38 @@ public class MobileWebCam extends CamActivity
 
 		menu.clear();
     	
-		addMenuItem(menu, MENU_SETTINGS, "Change Settings", android.R.drawable.ic_menu_preferences);
+		addMenuItem(menu, MENU_SETTINGS, "Configure", android.R.drawable.ic_menu_preferences, MenuItem.SHOW_AS_ACTION_ALWAYS | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
 
 		if(mSettings.mMobileWebCamEnabled)
-			addMenuItem(menu, MENU_SET_ON_OFFLINE, "Set OFFLINE", android.R.drawable.ic_menu_close_clear_cancel);
+			addMenuItem(menu, MENU_SET_ON_OFFLINE, "Set OFFLINE", android.R.drawable.presence_online, MenuItem.SHOW_AS_ACTION_ALWAYS);
 		else
-			addMenuItem(menu, MENU_SET_ON_OFFLINE, "Enable Camera", android.R.drawable.ic_menu_slideshow);
+			addMenuItem(menu, MENU_SET_ON_OFFLINE, "Enable Camera", android.R.drawable.presence_offline, MenuItem.SHOW_AS_ACTION_ALWAYS);
 
     	if(!mSettings.mURL.equals(mSettings.mDefaulturl) && mSettings.mUploadPictures)
 		{
 			if(mSettings.mEmailReceiverAddress.length() > 0 && mSettings.mMailPictures)
-				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_send);
+				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_send, MenuItem.SHOW_AS_ACTION_ALWAYS);
 			else
-				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_share);
+				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_share, MenuItem.SHOW_AS_ACTION_ALWAYS);
 		}
 		if(mSettings.mMode == Mode.MANUAL || mSettings.mMode == Mode.NORMAL)
-			addMenuItem(menu, MENU_SHARE_IMAGE, "Share Image", android.R.drawable.ic_menu_gallery);
+			addMenuItem(menu, MENU_SHARE_IMAGE, "Share Image", android.R.drawable.ic_menu_gallery, MenuItem.SHOW_AS_ACTION_IF_ROOM);
     	
 		if(NewCameraFunctions.getNumberOfCameras() > 1)
-    		addMenuItem(menu, MENU_SET_FRONT_BACK, "Toggle Front/Back Camera", android.R.drawable.ic_menu_camera);
+    		addMenuItem(menu, MENU_SET_FRONT_BACK, "Toggle Front/Back Camera", android.R.drawable.ic_menu_camera, MenuItem.SHOW_AS_ACTION_ALWAYS);
     	if(mPreview != null && mPreview.mCamera != null)
     	{
     		Camera.Parameters params = mPreview.mCamera.getParameters();
     		if(params != null)
     		{
     			if(NewCameraFunctions.isZoomSupported(params))
-    				addMenuItem(menu, MENU_SET_ZOOM, "Zoom In", android.R.drawable.ic_menu_crop);
+    				addMenuItem(menu, MENU_SET_ZOOM, "Zoom In", android.R.drawable.ic_menu_crop, MenuItem.SHOW_AS_ACTION_IF_ROOM);
     			menuWhiteBalanceModes = NewCameraFunctions.getSupportedWhiteBalance(params);
     			if(menuWhiteBalanceModes != null)
-    				addMenuItem(menu, MENU_SET_WHITEBALANCE, "White Balance", android.R.drawable.ic_menu_view);
+    				addMenuItem(menu, MENU_SET_WHITEBALANCE, "White Balance", android.R.drawable.ic_menu_view, MenuItem.SHOW_AS_ACTION_IF_ROOM);
 
     	    	if(NewCameraFunctions.isFlashSupported(params))
-    	    		addMenuItem(menu, MENU_SET_FLASH, "Toggle Camera Flashlight", android.R.drawable.ic_dialog_alert);
+    	    		addMenuItem(menu, MENU_SET_FLASH, "Toggle Camera Flashlight", android.R.drawable.ic_dialog_alert, MenuItem.SHOW_AS_ACTION_IF_ROOM);
     		}
     	}
 
@@ -306,7 +306,8 @@ public class MobileWebCam extends CamActivity
     }
 
     @Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         
 		mPrefs.registerOnSharedPreferenceChangeListener(this);            
@@ -341,7 +342,7 @@ public class MobileWebCam extends CamActivity
         
 	    if(mPrefs.getBoolean("server_enabled", true))
 	    {
-			String myIP = SystemSettings.getLocalIpAddress(MobileWebCam.this);
+			String myIP = RemoteControlSettings.getLocalIpAddress(MobileWebCam.this);
 			if(myIP != null)
 				setTitle(getTitle() + " http://" + myIP + ":" + MobileWebCamHttpService.getPort(mPrefs));
 	    }        
