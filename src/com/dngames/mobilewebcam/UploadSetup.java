@@ -42,16 +42,6 @@ public class UploadSetup extends PreferenceActivity implements OnSharedPreferenc
 		this.addPreferencesFromResource(R.layout.uploadsetup);
         getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 
-        getPreferenceManager().findPreference("sensr_setup").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-	         @Override
-	         public boolean onPreferenceClick(Preference preference) {
-	        	 Intent intent = new Intent(Intent.ACTION_VIEW);
-	        	 intent.setData(Uri.parse("http://sensr.net"));
-	             startActivity(intent);
-	             return true;
-	         }
-        });
-
         getPreferenceManager().findPreference("ftp_server_setup").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
 	         @Override
 	         public boolean onPreferenceClick(Preference preference) {

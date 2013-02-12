@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen
+        xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <PreferenceCategory
+		android:title="SMS Control">
+
+	    <CheckBoxPreference
+			android:key="sms_commands"
+			android:title="SMS Commands"
+			android:summary="Receive SMS commands 'photo', 'start', 'stop', 'reboot' and 'refresh NUMBER' for camera control!"
+			android:defaultValue="false"
+			/>
+	    
+	</PreferenceCategory>
+	     
+  <PreferenceCategory
+		android:title="Remote Configuration">
+	    
+	    <EditTextPreference
+        android:key="remote_config_url"
+        android:title="Control Website"
+        android:summary="Website URL to read configuration value text from. Config format: see dump"
+        android:hint="http://www.YOURDOMAIN.COM/config.txt"
+        android:inputType="textUri"
+        android:scrollHorizontally="true"
+        android:singleLine="true"/>
+      
+  <EditTextPreference
+            android:key="remote_config_login"
+            android:title="Login"
+            android:summary="Your login to your remote control server."
+            android:defaultValue=""
+            android:hint="Login"
+            android:inputType="text"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+	            />
+
+  <EditTextPreference
+            android:key="remote_config_password"
+            android:title="Password"
+            android:summary="Your password."
+            android:defaultValue=""
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+	            />
+
+    	<PreferenceScreen
+		    android:key="dump_config"
+			android:title="Show Config"
+			android:summary="Dump current config and share. You could use my app AutoShare to update Server."
+			/>
+      
+  </PreferenceCategory>
+      
+  <PreferenceCategory
+		android:title="Web Browser Access">
+
+    <PreferenceScreen
+		    android:key="info_ip"
+			android:title=""
+			android:summary="On WIFI connection or VPN access server."
+			/>
+
+    <EditTextPreference
+        android:key="wifi_port"
+        android:title="Port"
+        android:summary="Port for web interface access."
+        android:defaultValue="8080"
+        android:numeric="integer"/>
+
+    <CheckBoxPreference
+      android:key="server_enabled"
+      android:title="Enable"
+      android:summary="HTTP server enabled. Access using browser or other app from your PC or other devices. Disable this to stop service on your Android!"
+      android:defaultValue="true"/>
+
+    <PreferenceScreen
+      android:key="nano"
+      android:title="Using nanohttpd! Read more ..."
+      android:summary="Copyright (C) 2001,2005-2011 by Jarno Elonen &lt;elonen@iki.fi&gt;\nand Copyright (C) 2010 by Konstantinos Togias &lt;info@ktogias.gr&gt;"/>
+
+    </PreferenceCategory>
+    	
+</PreferenceScreen>

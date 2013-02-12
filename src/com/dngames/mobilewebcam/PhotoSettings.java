@@ -1,4 +1,4 @@
-/* Copyright 2012 Michael Haar
+ï»¿/* Copyright 2012 Michael Haar
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -18,7 +18,27 @@ package com.dngames.mobilewebcam;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Field;
+import java.net.URL;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.entity.BufferedHttpEntity;
+import org.apache.http.impl.client.AbstractHttpClient;
+import org.apache.http.impl.client.DefaultHttpClient;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -26,11 +46,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.hardware.Camera;
+import android.os.AsyncTask;
 import android.os.Environment;
+import android.preference.Preference;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
@@ -40,61 +63,138 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	private Context mContext = null;
     private SharedPreferences mPrefs = null;
     
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    @interface StringPref
+    {
+        String key(); 
+        String val(); 
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    @interface IntegerPref
+    {
+        String key(); 
+        int val(); 
+        int factor() default 1; // factor to apply for calculations (settings var but not pref value)
+        int min() default Integer.MIN_VALUE; // range min allowed value
+        int max() default Integer.MAX_VALUE; // range max allowed value
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    @interface BooleanPref
+    {
+        String key(); 
+        boolean val(); 
+    }
+
+    @BooleanPref(key = "server_upload", val = true)
 	public boolean mUploadPictures = true;
+	@BooleanPref(key = "ftpserver_upload", val = false)
 	public boolean mFTPPictures = false;
+	@BooleanPref(key = "cam_storepictures", val = false)
 	public boolean mStorePictures = false;
+	@BooleanPref(key = "cam_mailphoto", val = false)
 	public boolean mMailPictures = false;
+	@BooleanPref(key = "dropbox_upload", val = false)
 	public boolean mDropboxPictures = false;
 	
 	final String mDefaulturl = "http://www.YOURDOMAIN.COM/mobilewebcam.php";
 	final String mDefaultFTPurl = "FTP.YOURDOMAIN.COM";
     
+	@StringPref(key = "cam_url", val = mDefaulturl)
 	public String mURL = mDefaulturl;
+    @StringPref(key = "cam_login", val = "")
 	public String mLogin = "";
+    @StringPref(key = "cam_password", val = "")
 	public String mPassword = "";
+    @StringPref(key = "ftpserver_defaultname", val = "current.jpg")
 	public String mDefaultname = "current.jpg";
+    @BooleanPref(key = "use_sftp", val = false)
+	public boolean mSFTP = false;
+    @BooleanPref(key = "cam_filenames", val = true)
 	public boolean mFTPNumbered = true;
+    @BooleanPref(key = "cam_datetime", val = false)
 	public boolean mFTPTimestamp = false;
+    @IntegerPref(key = "ftp_keepoldpics", val = 0)
 	public int mFTPKeepPics = 0;
+	@StringPref(key = "ftpserver_url", val = mDefaultFTPurl)
 	public String mFTP = mDefaultFTPurl;
+	@IntegerPref(key = "ftp_port", val = 21)
 	public int mFTPPort = 21;
+	@StringPref(key = "ftp_dir", val = "")
 	public String mFTPDir = "";
+    @StringPref(key = "ftp_login", val = "")
 	public String mFTPLogin = "";
+    @StringPref(key = "ftp_password", val = "")
 	public String mFTPPassword = "";
+    @BooleanPref(key = "cam_passiveftp", val = true)
 	public boolean mFTPPassive = true;
+	@StringPref(key = "dropbox_dir", val = "")
 	public String mDropboxDir = "";
+    @StringPref(key = "dropbox_defaultname", val = "current.jpg")
 	public String mDropboxDefaultname = "current.jpg";
+    @BooleanPref(key = "dropbox_filenames", val = false)
 	public boolean mDropboxNumbered = true;
+    @BooleanPref(key = "dropbox_datetime", val = false)
 	public boolean mDropboxTimestamp = false;
+    @IntegerPref(key = "dropbox_keepoldpics", val = 0)
 	public int mDropboxKeepPics = 0;
+    
+    @IntegerPref(key = "cam_refresh", val = 60, factor = 1000)
 	public int mRefreshDuration = 60000;
+    @IntegerPref(key = "picture_size_sel", val = 1)
 	public int mImageSize = 1;
+    @IntegerPref(key = "picture_size_custom_w", val = 320)
 	public int mCustomImageW = 320;
+    @IntegerPref(key = "picture_size_custom_h", val = 240)
 	public int mCustomImageH = 240;
 	public enum ImageScaleMode { LETTERBOX, CROP, STRETCH, NOSCALE };
 	public ImageScaleMode mCustomImageScale = ImageScaleMode.CROP;
+    @IntegerPref(key = "picture_compression", val = 85)
 	public int mImageCompression = 85;
+    @BooleanPref(key = "picture_autofocus", val = false)
 	public boolean mAutoFocus = false;
+	@BooleanPref(key = "picture_rotate", val = false)
 	public boolean mForcePortraitImages = false;
+	@BooleanPref(key = "picture_flip", val = false)
 	public boolean mFlipImages = false;
+    @BooleanPref(key = "picture_autorotate", val = false)
 	public boolean mAutoRotateImages = false;
+    @StringPref(key = "cam_email", val = "")
 	public String mEmailReceiverAddress = "";
+	@StringPref(key = "cam_emailsubject", val = "")
 	public String mEmailSubject = "";
 	public enum Mode { MANUAL, NORMAL, HIDDEN, BACKGROUND, BROADCASTRECEIVER };
 	public Mode mMode = Mode.NORMAL;
+	@BooleanPref(key = "motion_detect", val = false)
 	public boolean mMotionDetect = false;
+	@IntegerPref(key = "motion_change", val = 15)
 	public int mMotionColorChange = 15;
+	@IntegerPref(key = "motion_value", val = 25)
 	public int mMotionPixels = 25;
-	public int mMotionDetectKeepAliveRefresh = 3600;
+	@IntegerPref(key = "motion_keepalive_refresh", val = 3600, factor = 1000)
+	public int mMotionDetectKeepAliveRefresh = 3600 * 1000;
+	@StringPref(key = "broadcast_activation", val = "")
 	public String mBroadcastReceiver = "";
+	@BooleanPref(key = "night_detect", val = false)
 	public boolean mNightDetect = false;
+	@BooleanPref(key = "night_autoflash", val = false)
+	public boolean mNightAutoFlash = false;
 	public boolean mAutoStart = false;
+    @IntegerPref(key = "reboot", val = 0)
 	public int mReboot = 0; 
+	@StringPref(key = "activity_starttime", val = "00:00")
 	public String mStartTime = "00:00";
+	@StringPref(key = "activity_endtime", val = "24:00")
 	public String mEndTime = "24:00";
+	@StringPref(key = "imprint_datetimeformat", val = "yyyy/MM/dd   HH:mm:ss")
 	public String mImprintDateTime = "yyyy/MM/dd   HH:mm:ss";
 	public String mImprintText = "mobilewebcam " + android.os.Build.MODEL;
-	public String mImprintStatusInfo = "Battery %03d%% %3.1f°C";
+	@StringPref(key = "imprint_statusinfo", val = "Battery %d%% %.1fÂ°C")
+	public String mImprintStatusInfo = "Battery %03d%% %3.1fï¿½C";
 	public int mTextColor = Color.WHITE;
 	public int mTextShadowColor = Color.BLACK;
 	public int mTextBackgroundColor = Color.TRANSPARENT;
@@ -106,33 +206,52 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public boolean mDateTimeBackgroundLine = true;
 	public int mDateTimeX = 85, mDateTimeY = 97;
 	public int mStatusInfoX = 85, mStatusInfoY = 92;
+	@BooleanPref(key = "imprint_gps", val = false)
 	public boolean mImprintGPS = false;
+	@BooleanPref(key = "imprint_location", val = false)
 	public boolean mImprintLocation = false;
 	public int mGPSX = 85, mGPSY = 87;
+	@BooleanPref(key = "imprint_picture", val = false)
 	public boolean mImprintPicture = false;
 	public boolean mFilterPicture = false;
 	public int mFilterType = 0;
+	@BooleanPref(key = "store_gps", val = false)
 	public boolean mStoreGPS = false;
 	public boolean mNoToasts = false;
 	public boolean mFullWakeLock = true;
 	public boolean mCameraStartupEnabled = true;
+	@BooleanPref(key = "mobilewebcam_enabled", val = true)
 	public boolean mMobileWebCamEnabled = true;
 	boolean mShutterSound = true;
+    @BooleanPref(key = "cam_front", val = false)
 	public boolean mFrontCamera = false;
+    @IntegerPref(key = "zoom", val = 0)        
 	public int mZoom = 0;
+    @StringPref(key = "whitebalance", val = Camera.Parameters.WHITE_BALANCE_AUTO)
 	public String mWhiteBalance = Camera.Parameters.WHITE_BALANCE_AUTO;
+    @BooleanPref(key = "cam_flash", val = false)
 	public boolean mCameraFlash = false;
 	
+	@StringPref(key = "email_sender", val = "")
 	public String mMailAddress = "";
+	@StringPref(key = "email_password", val = "")
 	public String mMailPassword = "";
+	@StringPref(key = "email_host", val = "smtp.gmail.com")
 	public String mMailHost = "smtp.gmail.com";
+	@StringPref(key = "email_port", val = "465")
 	public String mMailPort = "465";
+	@BooleanPref(key = "email_ssl", val = true)
 	public boolean mMailSSL = true;
 
+	@IntegerPref(key = "server_every", val = 1, min = 1)
 	public int mServerFreq = 1;
+	@IntegerPref(key = "ftp_every", val = 1, min = 1)
 	public int mFTPFreq = 1;
+	@IntegerPref(key = "mail_every", val = 1, min = 1)
 	public int mMailFreq = 1;
+	@IntegerPref(key = "dropbox_every", val = 1, min = 1)
 	public int mDropboxFreq = 1;
+	@IntegerPref(key = "store_every", val = 1, min = 1)
 	public int mStoreFreq = 1;
 	    
 	public Bitmap mImprintBitmap = null;
@@ -194,70 +313,51 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	@Override
     public void onSharedPreferenceChanged(SharedPreferences prefs, String key)
 	{
-		mMobileWebCamEnabled = prefs.getBoolean("mobilewebcam_enabled", true);
-		
-    	mUploadPictures = prefs.getBoolean("server_upload", true);
-    	mFTPPictures = prefs.getBoolean("ftpserver_upload", false);
-    	mStorePictures = prefs.getBoolean("cam_storepictures", false);
-		mMailPictures = prefs.getBoolean("cam_mailphoto", false);
-    	mDropboxPictures = prefs.getBoolean("dropbox_upload", false);
-
-		mFTPFreq = Math.max(getEditInt(mContext, prefs, "ftp_every", 1), 1);
-
-		mURL = prefs.getString("cam_url", mDefaulturl);
-        mLogin = prefs.getString("cam_login", "");
-        mPassword = prefs.getString("cam_password", "");
+		// get all preferences
+		for(Field f : getClass().getFields())
+		{
+			BooleanPref bp = f.getAnnotation(BooleanPref.class);
+			if(bp != null)
+			{
+				try {
+					f.setBoolean(this, prefs.getBoolean(bp.key(), bp.val()));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			IntegerPref ip = f.getAnnotation(IntegerPref.class);
+			if(ip != null)
+			{
+				try
+				{
+			        int eval = getEditInt(mContext, prefs, ip.key(), ip.val()) * ip.factor();
+			        if(ip.max() != Integer.MAX_VALUE)
+			        	eval = Math.min(eval, ip.max());
+			        if(ip.min() != Integer.MIN_VALUE)
+			        	eval = Math.max(eval, ip.min());
+					f.setInt(this, eval);
+				}
+				catch (Exception e)
+				{
+					e.printStackTrace();
+				}
+			}
+			StringPref sp = f.getAnnotation(StringPref.class);
+			if(sp != null)
+			{
+				try {
+					f.set(this, prefs.getString(sp.key(), sp.val()));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
         
-        mDefaultname = prefs.getString("ftpserver_defaultname", "current.jpg");
-        mFTPNumbered = prefs.getBoolean("cam_filenames", true);
-        mFTPTimestamp = prefs.getBoolean("cam_datetime", false);
-        mFTPKeepPics = getEditInt(mContext, prefs, "ftp_keepoldpics", 0);
-		mFTP = prefs.getString("ftpserver_url", mDefaultFTPurl);
-		mFTPPort = getEditInt(mContext, prefs, "ftp_port", 21);
-		mFTPDir = prefs.getString("ftp_dir", "");
-        mFTPLogin = prefs.getString("ftp_login", "");
-        mFTPPassword = prefs.getString("ftp_password", "");
-        mFTPPassive = prefs.getBoolean("cam_passiveftp", true);
-
-		mDropboxDir = prefs.getString("dropbox_dir", "");
-        mDropboxDefaultname = prefs.getString("dropbox_defaultname", "current.jpg");
-        mDropboxNumbered = prefs.getBoolean("dropbox_filenames", false);
-        mDropboxTimestamp = prefs.getBoolean("dropbox_datetime", false);
-        mDropboxKeepPics = getEditInt(mContext, prefs, "dropbox_keepoldpics", 0);
-
-        mRefreshDuration = getEditInt(mContext, prefs, "cam_refresh", 60) * 1000;
-        
-        mImageSize = getEditInt(mContext, prefs, "picture_size_sel", 1);
-        mCustomImageW = getEditInt(mContext, prefs, "picture_size_custom_w", 320);
-        mCustomImageH = getEditInt(mContext, prefs, "picture_size_custom_h", 240);
-        mCustomImageScale = Enum.valueOf(ImageScaleMode.class, prefs.getString("custompicscale", "CROP"));
-        mImageCompression = prefs.getInt("picture_compression", 85);
-        mAutoFocus = prefs.getBoolean("picture_autofocus", false);
-        
-        mFrontCamera = prefs.getBoolean("cam_front", false);
-        mCameraFlash = prefs.getBoolean("cam_flash", false);
-        mZoom = getEditInt(mContext, prefs, "zoom", 0);        
-        mWhiteBalance = prefs.getString("whitebalance", Camera.Parameters.WHITE_BALANCE_AUTO);
-        
-        mAutoRotateImages = prefs.getBoolean("picture_autorotate", false);
-		mForcePortraitImages = prefs.getBoolean("picture_rotate", false);
-		mFlipImages = prefs.getBoolean("picture_flip", false); 
-        mEmailReceiverAddress = prefs.getString("cam_email", "");
-		mEmailSubject = prefs.getString("cam_emailsubject", "");
-
-		mMotionDetect = prefs.getBoolean("motion_detect", false);
-		mMotionColorChange = prefs.getInt("motion_change", 15);
-		mMotionPixels = prefs.getInt("motion_value", 25);
-		mMotionDetectKeepAliveRefresh = getEditInt(mContext, prefs, "motion_keepalive_refresh", 3600);
-		mBroadcastReceiver = prefs.getString("broadcast_activation", "");
-		mNightDetect = prefs.getBoolean("night_detect", false);
+	    mCustomImageScale = Enum.valueOf(ImageScaleMode.class, prefs.getString("custompicscale", "CROP"));
+                
 		mAutoStart = prefs.getBoolean("autostart", false);
 		mCameraStartupEnabled = prefs.getBoolean("cam_autostart", true);
         mShutterSound = prefs.getBoolean("shutter", true); 
-        mReboot = getEditInt(mContext, prefs, "reboot", 0);
-		mStartTime = prefs.getString("activity_starttime", "00:00");
-		mEndTime = prefs.getString("activity_endtime", "24:00");
-		mImprintDateTime = prefs.getString("imprint_datetimeformat", "yyyy/MM/dd   HH:mm:ss");
 		mDateTimeColor = GetPrefColor(prefs, "datetime_color", "#FFFFFFFF", Color.WHITE);
 		mDateTimeShadowColor = GetPrefColor(prefs, "datetime_shadowcolor", "#FFFFFFFF", Color.BLACK);
 		mDateTimeBackgroundColor = GetPrefColor(prefs, "datetime_backcolor", "#00000000", Color.TRANSPARENT);
@@ -273,26 +373,15 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		mTextX = prefs.getInt("text_x", 15);
 		mTextY = prefs.getInt("text_y", 3);
 
-		mImprintStatusInfo = prefs.getString("imprint_statusinfo", "Battery %03d%% %3.1f°C");
 		mStatusInfoX = prefs.getInt("statusinfo_x", 85);
 		mStatusInfoY = prefs.getInt("statusinfo_y", 92);
 
-		mImprintGPS = prefs.getBoolean("imprint_gps", false);
-		mImprintLocation = prefs.getBoolean("imprint_location", false);
 		mGPSX = prefs.getInt("gps_x", 85);
 		mGPSY = prefs.getInt("gps_y", 87);
 		
-		mImprintPicture = prefs.getBoolean("imprint_picture", false);
 		mFilterPicture = false; //***prefs.getBoolean("filter_picture", false);
         mFilterType = getEditInt(mContext, prefs, "filter_sel", 0);
-		mStoreGPS = prefs.getBoolean("store_gps", false);
 		
-		mMailAddress = prefs.getString("email_sender", "");
-		mMailPassword = prefs.getString("email_password", "");
-		mMailHost = prefs.getString("email_host", "smtp.gmail.com");
-		mMailPort = prefs.getString("email_port", "465");
-		mMailSSL = prefs.getBoolean("email_ssl", true);
-
 		if(mImprintPicture)
 		{
 			File path = new File(Environment.getExternalStorageDirectory() + "/MobileWebCam/");
@@ -364,4 +453,201 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		edit.putBoolean("mobilewebcam_enabled", enabled);
 		edit.commit();
 	}
+	
+	public static String DumpSettings(SharedPreferences prefs)
+	{
+		StringBuilder s = new StringBuilder();
+
+		Map<String, Object> all = new HashMap<String, Object>();
+		
+		for(Field f : PhotoSettings.class.getFields())
+		{
+			BooleanPref bp = f.getAnnotation(BooleanPref.class);
+			if(bp != null)
+			{
+				boolean val = prefs.getBoolean(bp.key(), bp.val());
+				all.put(bp.key(), val);
+			}
+			StringPref sp = f.getAnnotation(StringPref.class);
+			if(sp != null)
+			{
+				String val = prefs.getString(sp.key(), sp.val());
+				all.put(sp.key(), val);
+			}
+			IntegerPref ip = f.getAnnotation(IntegerPref.class);
+			if(ip != null)
+			{
+				try
+				{
+					String val = prefs.getString(ip.key(), "" + ip.val());
+					all.put(ip.key(), val);
+				}
+				catch(ClassCastException e)
+				{
+					try
+					{
+						int val = prefs.getInt(ip.key(), ip.val());
+						all.put(ip.key(), val);
+					}
+					catch(ClassCastException ei)
+					{
+						ei.printStackTrace();
+					}
+				}
+			}
+		}
+		
+		for(Map.Entry<String, ?> p : all.entrySet())
+			s.append(p.getKey() + ":" + p.getValue() + "\n");
+		
+		return s.toString();
+	}
+	
+	private static <T> T parseObjectFromString(String s, Class<T> c) throws Exception
+	{
+	    return c.getConstructor(new Class[] {String.class }).newInstance(s);
+	}	
+	
+	public static void GETSettings(final Context context)
+	{
+		// check for new settings when done
+		final SharedPreferences prefs = context.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
+		final String settingsurl = prefs.getString("remote_config_url", "");
+		final String login = prefs.getString("remote_config_login", "");
+		final String password = prefs.getString("remote_config_password", "");
+		if(settingsurl.length() > 0)
+		{
+			new AsyncTask<String, Void, String>()
+			{
+				@Override
+				protected String doInBackground(String... params)
+				{
+					try
+					{
+						DefaultHttpClient httpclient = new DefaultHttpClient();
+						if(login.length() > 0)
+						{
+							try
+							{
+		    					((AbstractHttpClient) httpclient).getCredentialsProvider().setCredentials(
+			    						new AuthScope(null, -1),
+			    						new UsernamePasswordCredentials(login, password));
+							}
+							catch(Exception e)
+							{
+								e.printStackTrace();
+								if(e.getMessage() != null)
+									MobileWebCam.LogE("http login " + e.getMessage());
+								else
+									MobileWebCam.LogE("http: unable to log in");
+								
+								return null;
+							}
+						}
+						HttpGet get = new HttpGet(settingsurl);
+						HttpResponse response = httpclient.execute(get);
+						HttpEntity ht = response.getEntity();
+				        BufferedHttpEntity buf = new BufferedHttpEntity(ht);
+				        InputStream is = buf.getContent();
+				        BufferedReader r = new BufferedReader(new InputStreamReader(is));
+				        StringBuilder total = new StringBuilder();
+				        String line;
+				        while((line = r.readLine()) != null)
+				            total.append(line + "\n");
+						
+						if(ht.getContentType().getValue().startsWith("text/plain"))
+							return total.toString();
+						else
+							return "GET Config Error!\n" + total.toString(); 							
+					}
+					catch(Exception e)
+					{
+						e.printStackTrace();
+						if(e.getMessage() != null)
+						{
+							MobileWebCam.LogE(e.getMessage());
+							return "GET Config Error!\n" + e.getMessage(); 
+						}						
+					}
+
+					return null;
+				}
+				
+				@Override
+				protected void onPostExecute(String result)
+				{
+					if(result != null)
+					{
+						if(result.startsWith("GET Config Error!\n"))
+							Toast.makeText(context, result, Toast.LENGTH_LONG).show();
+						else
+							PhotoSettings.GETSettings(result, prefs);
+					}
+					else
+						Toast.makeText(context, "GET config failed!", Toast.LENGTH_SHORT).show();
+				}					
+			}.execute();
+		}
+	}
+	
+	public static void GETSettings(String configtext, SharedPreferences prefs)
+	{
+		String[] settings = configtext.split("\n");
+		
+		Editor edit = prefs.edit();
+		Map<String, Object> all = new HashMap<String, Object>();
+		
+		for(Field f : PhotoSettings.class.getFields())
+		{
+			BooleanPref bp = f.getAnnotation(BooleanPref.class);
+			if(bp != null)
+				all.put(bp.key(), bp.val());
+			StringPref sp = f.getAnnotation(StringPref.class);
+			if(sp != null)
+				all.put(sp.key(), sp.val());
+			IntegerPref ip = f.getAnnotation(IntegerPref.class);
+			if(ip != null)
+				all.put(ip.key(), ip.val());
+		}
+		
+		for(Map.Entry<String, ?> p : all.entrySet())
+		{
+			for(String s : settings)
+			{
+				if(s.startsWith(p.getKey()))
+				{
+					try
+					{
+						String value = s.split(":")[1];
+						Class c = p.getValue().getClass();
+						Object val = parseObjectFromString(value, c);
+
+						if(c == String.class)
+							edit.putString(p.getKey(), (String)val);
+						else if(c == Boolean.class)
+							edit.putBoolean(p.getKey(), (Boolean)val);
+						else if(c == Integer.class)
+							edit.putString(p.getKey(), val.toString());
+						else
+							throw new UnsupportedOperationException(c.toString());
+					}
+					catch(Exception e)
+					{
+						if(e.getMessage() != null)
+							MobileWebCam.LogE(e.getMessage());
+						e.printStackTrace();
+					}
+					break;
+				}
+			}
+		}
+		edit.commit();
+	}
+
+	public void setCameraFlash(boolean on)
+	{
+		SharedPreferences.Editor edit = mPrefs.edit();
+		edit.putBoolean("cam_flash", on);
+		edit.commit();
+	}	
 }

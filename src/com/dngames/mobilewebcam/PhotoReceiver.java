@@ -83,7 +83,7 @@ public class PhotoReceiver extends BroadcastReceiver
 			txt = contentText[2];
 	    if(prefs.getBoolean("server_enabled", true))
 	    {
-			String myIP = SystemSettings.getLocalIpAddress(c);
+			String myIP = RemoteControlSettings.getLocalIpAddress(c);
 			if(myIP != null)
 				txt = txt.subSequence(0, txt.length() - 5) + " http://" + myIP + ":" + MobileWebCamHttpService.getPort(prefs);
 	    }

@@ -19,37 +19,10 @@
 			/>
 
   </PreferenceCategory>
-
-  <PreferenceCategory
-		android:title="Web Access">
-
-    <PreferenceScreen
-		    android:key="info_ip"
-			android:title=""
-			android:summary="On WIFI connection or VPN access server."
-			/>
-
-    <EditTextPreference
-        android:key="wifi_port"
-        android:title="Port"
-        android:summary="Port for web interface access."
-        android:defaultValue="8080"
-        android:numeric="integer"/>
-
-    <CheckBoxPreference
-      android:key="server_enabled"
-      android:title="Enable"
-      android:summary="HTTP server enabled. Access using browser or other app from your PC or other devices."
-      android:defaultValue="true"/>
-
-    <PreferenceScreen
-      android:key="nano"
-      android:title="Using nanohttpd! Read more ..."
-      android:summary="Copyright (C) 2001,2005-2011 by Jarno Elonen &lt;elonen@iki.fi&gt;\nand Copyright (C) 2010 by Konstantinos Togias &lt;info@ktogias.gr&gt;"/>
-
+   
     </PreferenceCategory>
-
-  <PreferenceCategory
+    	
+	<PreferenceCategory
 		android:title="System settings">
 		
 		<CheckBoxPreference

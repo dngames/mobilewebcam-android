@@ -41,6 +41,29 @@ public class NewCameraWrapper
 
 		return 1; 
 	}
+
+	public static boolean isFrontCamera(int camIdx)
+	{
+		try
+		{
+		    Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
+	        Camera.getCameraInfo( camIdx, cameraInfo );
+	        if(cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
+	        {
+	        	return true;
+	        }
+		}
+		catch(NoSuchMethodError e)
+		{
+			MobileWebCam.LogE("Unable to get CameraInfo: " + e.getMessage());
+		}
+		catch(NoClassDefFoundError e)
+		{
+			MobileWebCam.LogE("Unable to get CameraInfo: " + e.getMessage());
+		}
+	    
+	    return false;
+    }
 	
 	public static Camera openFrontCamera()
 	{
@@ -68,6 +91,10 @@ public class NewCameraWrapper
 		catch(NoSuchMethodError e)
 		{
 			MobileWebCam.LogE("Front camera failed to open: " + e.getMessage());
+		}
+		catch(NoClassDefFoundError e)
+		{
+			MobileWebCam.LogE("Unable to get CameraInfo: " + e.getMessage());
 		}
 	    
 	    return null;

@@ -41,16 +41,16 @@
 				android:summary="Try to not upload nearly black (night) pictures. When enabled consumes a little more battery power!"
 				android:defaultValue="false"
 				/>
-            
+
+			<CheckBoxPreference
+				android:key="night_autoflash"
+				android:title="Auto Flashlight at Night"
+				android:summary="Use Flashlight (if available) automatically in the darkness! High power consumption, much slower pictures. Activation for next picture."
+				android:defaultValue="false"
+				/>
+						
       		</PreferenceCategory>
 	            
-	    <CheckBoxPreference
-			android:key="sms_commands"
-			android:title="SMS Commands"
-			android:summary="Receive SMS commands 'photo', 'start', 'stop', 'reboot' and 'refresh NUMBER' for camera control!"
-			android:defaultValue="false"
-			/>	
-			
 		<PreferenceCategory
 			android:title="Motion Detection">
 	    

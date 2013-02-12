@@ -84,6 +84,25 @@ import android.content.Intent;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.content.AbstractContentBody;
+import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.entity.mime.MIME;
+
+
+import org.apache.http.client.HttpClient;
+import org.apache.http.HttpEntity;
+import org.apache.http.util.EntityUtils;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.AbstractHttpClient;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.HttpResponse;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+
+import org.apache.commons.net.ftp.FTPClient;
+
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
 
 import android.content.SharedPreferences;
@@ -154,7 +173,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						{
 							boolean ignoreinactivity = false; 
 							long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
-							if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh * 1000)
+							if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh)
 							{
 								MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
 								MobileWebCam.LogI("Taking keep alive picture!");
@@ -494,7 +513,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		{
 			try
 			{
-				if(mSettings.mFrontCamera)
+				if(mSettings.mFrontCamera || NewCameraFunctions.getNumberOfCameras() == 1 && NewCameraFunctions.isFrontCamera(0))
 				{
 					Log.v("MobileWebCam", "Trying to open CAMERA 1!");
 					mCamera = NewCameraFunctions.openFrontCamera();
@@ -821,7 +840,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 							else
 							{
 								final long sincelastmotion = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
-								if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastmotion >= mSettings.mMotionDetectKeepAliveRefresh * 1000)
+								if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastmotion >= mSettings.mMotionDetectKeepAliveRefresh)
 								{
 									MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
 									MobileWebCam.LogI("Taking keep alive picture!");
@@ -942,7 +961,19 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			{
 				if(mCamera != null)
 				{
-					mCamera.startPreview();
+					try
+					{
+						mCamera.startPreview();
+					}
+					catch(RuntimeException e)
+					{
+						e.printStackTrace();
+						if(e.getMessage() != null)
+						{
+							Toast.makeText(mActivity, e.getMessage(), Toast.LENGTH_SHORT).show();
+							MobileWebCam.LogE(e.getMessage());
+						}
+					}
 				
 					if(mSettings.mMotionDetect)
 					{
