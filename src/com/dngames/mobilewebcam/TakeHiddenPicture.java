@@ -107,9 +107,7 @@ public class TakeHiddenPicture extends CamActivity
 
 		if(!MobileWebCam.gIsRunning && !MobileWebCam.gInSettings)
     	{
-
 			mPreview.setVisibility(View.VISIBLE);
-			mDrawOnTop.setVisibility(View.INVISIBLE);
     		
 			// timeout in case anything went wrong!
 			mHandler.removeCallbacks(mTimeOut);

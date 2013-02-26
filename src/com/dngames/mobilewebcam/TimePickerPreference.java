@@ -70,28 +70,27 @@ public class TimePickerPreference extends DialogPreference
 	 * @see android.preference.DialogPreference#onCreateDialogView()
 	 */
 	@Override
-	protected View onCreateDialogView() {
- 
-		mTP = new TimePicker(getContext());
+	protected View onCreateDialogView()
+	{
+ 		mTP = new TimePicker(getContext());
  
 		boolean is24hour = DateFormat.is24HourFormat(mTP.getContext());
-		
-		int h = getHour();
-		int m = getMinute();
-		if (h >= 0 && h <= (is24hour ? 24 : 12))
-			mTP.setCurrentHour(h);
-		if (m >= 0 && m <= 60)
-			mTP.setCurrentMinute(m);
-		
 		try
 		{
 			mTP.setIs24HourView(is24hour);
+			
+			int h = getHour();
+			int m = getMinute();
+			if (h >= 0 && h <= (is24hour ? 24 : 12))
+				mTP.setCurrentHour(h);
+			if (m >= 0 && m <= 60)
+				mTP.setCurrentMinute(m);
 		}
 		catch(IllegalArgumentException e)
 		{
 			e.printStackTrace();
 		}
- 
+		
 		return mTP;
 	}
  

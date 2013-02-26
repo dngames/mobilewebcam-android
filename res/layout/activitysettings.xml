@@ -36,6 +36,13 @@
 		       android:defaultValue="24:00"/>
 		
 			<CheckBoxPreference
+				android:key="lowbattery_pause"
+				android:title="Low Battery Pause"
+				android:summary="Stop pictures while battery power is below 15%! Allows solar charger to refill power."
+				android:defaultValue="false"
+				/>
+		
+			<CheckBoxPreference
 				android:key="night_detect"
 				android:title="No Night Uploads"
 				android:summary="Try to not upload nearly black (night) pictures. When enabled consumes a little more battery power!"
@@ -53,6 +60,13 @@
 	            
 		<PreferenceCategory
 			android:title="Motion Detection">
+			
+		    <PreferenceScreen
+		        android:key="motiondetectPIRinfo"
+		        android:title="PIR Hardware"
+		        android:summary="A hardware solution for motion detection is recommended. A software solution can not work without a camera preview always enabled. So it will consume a lot of battery. A hardware solution like opensmartcam is very efficient and works much more accurate! Visit the project website for more info."
+		        android:enabled ="false"
+		        />
 	    
 		    <CheckBoxPreference
 				android:key="motion_detect"
@@ -112,7 +126,14 @@
 	            android:summary="Send picture even at non activity/night times or without motion detected after this many seconds to get a status update."
 	            android:defaultValue="3600"
 	            android:numeric="integer"
-	            />		    
+	            />
+	    	
+		<CheckBoxPreference
+			android:key="log_upload"
+			android:title="Log"
+			android:summary="Send a logfile with every picture."
+			android:defaultValue="false"
+			/>
 		    
 		</PreferenceCategory>
 

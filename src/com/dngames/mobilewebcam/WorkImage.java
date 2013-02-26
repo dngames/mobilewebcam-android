@@ -50,8 +50,12 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Paint.Align;
+import android.graphics.Paint.FontMetrics;
+import android.graphics.Paint.FontMetricsInt;
 import android.graphics.Rect;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.hardware.Camera;
 import android.location.Geocoder;
 import android.location.Location;
@@ -92,6 +96,20 @@ public class WorkImage implements Runnable, LocationListener
 	
 	private LocationManager locationManager;
 	private Geocoder geocoder;	
+	
+	public static int getBatteryLevel(Context context)
+	{
+		Context c = context.getApplicationContext();
+		if(c == null)
+			c = context;
+		Intent batteryIntent = c.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+		int rawlevel = batteryIntent.getIntExtra("level", -1);
+		double bscale = batteryIntent.getIntExtra("scale", -1);
+		double level = -1;
+		if (rawlevel >= 0 && bscale > 0)
+		    level = rawlevel / bscale;
+		return (int)(level * 100.0);
+	}
 	
 	public static String getBatteryInfo(Context context, String format)
 	{
@@ -673,6 +691,8 @@ public class WorkImage implements Runnable, LocationListener
 				}
 				if(locationManager != null)
 					locationManager.removeUpdates(this);
+				else
+					MobileWebCam.LogE("Error: Unable to get last (gps) location - timeout!");					
 			}
 
 			if(gBmp != null && mutable)
@@ -684,7 +704,7 @@ public class WorkImage implements Runnable, LocationListener
 				else if(mSettings.mImageSize == 0)
 					textsize += 1.0f;
 				
-				Canvas canvas = new Canvas(gBmp);				
+				Canvas canvas = new Canvas(gBmp);	
 
 				if(rotate && old != null)
 				{
@@ -708,6 +728,16 @@ public class WorkImage implements Runnable, LocationListener
 				}
 				
 				Paint p = new Paint();
+				
+				if(mSettings.mTextFontname.length() > 0)
+				{
+					Typeface tf = ExifWrapper.createTypefaceFromFile(mSettings.mTextFontname);
+					if(tf != null)
+						p.setTypeface(tf);
+					else
+						MobileWebCam.LogE("Warning: Unable to set font typeface " + mSettings.mTextFontname + "!");
+				}				
+				
 				if(mSettings.mImprintDateTime.length() > 0)
 				{
 					Date date = new Date();
@@ -721,8 +751,7 @@ public class WorkImage implements Runnable, LocationListener
 						MobileWebCam.LogE(e.toString());
 						sdf = new SimpleDateFormat("format error! yyyy/MM/dd   HH:mm:ss");
 					}
-        			p.setAntiAlias(true);
-        			p.setTextSize(textsize);
+					
         			String txt = "";
         			try
         			{
@@ -733,109 +762,25 @@ public class WorkImage implements Runnable, LocationListener
 						MobileWebCam.LogE(e.toString());
 						txt = "format error!";
         			}
-        			
-        			float textWidth = p.measureText(txt);
-        			float textHeight = p.descent() - p.ascent();
-        			int rectX = (int)(gBmp.getWidth() * mSettings.mDateTimeX / 100 - textWidth / 2);
-        			int tx = rectX;
-        		    int ty = (int)(gBmp.getHeight() * mSettings.mDateTimeY / 100 - textHeight / 2);
-        		    int rectWidth = (int)textWidth;
-        		    if(mSettings.mDateTimeBackgroundLine)
-        		    {
-        		    	rectX = 0;
-            		    rectWidth = canvas.getWidth();
-        		    }
-        		    
-        		    p.setColor(mSettings.mDateTimeBackgroundColor);
-        		    canvas.drawRect(rectX - textHeight / 2, ty + textHeight / 2, rectX + rectWidth + textHeight / 2, ty - textHeight, p);        			
-        			
-    				p.setColor(mSettings.mDateTimeShadowColor);
-        			canvas.drawText(txt, tx + 1, ty + 1, p);
-    				p.setColor(mSettings.mDateTimeColor);
-        			canvas.drawText(txt, tx, ty, p);
+
+        			DrawText(canvas, p, textsize, mSettings.mDateTimeFontScale, txt, (float)mSettings.mDateTimeX, (float)mSettings.mDateTimeY, mSettings.mDateTimeBackgroundLine, mSettings.mDateTimeBackgroundColor, mSettings.mDateTimeShadowColor, mSettings.mDateTimeColor, mSettings.mDateTimeAlign);
 				}
 				
 				if(mSettings.mImprintText.length() > 0)
-				{
-        			p.setAntiAlias(true);
-        			p.setTextSize(textsize);
-        			
-        			float textWidth =  p.measureText(mSettings.mImprintText);
-        			float textHeight = p.descent() - p.ascent();
-        			int rectX = (int)(gBmp.getWidth() * mSettings.mTextX / 100 - textWidth / 2);
-        			int tx = rectX;
-        		    int ty = (int)(gBmp.getHeight() * mSettings.mTextY / 100 - textHeight / 2);
-        		    int rectWidth = (int)textWidth;
-        		    if(mSettings.mTextBackgroundLine)
-        		    {
-        		    	rectX = 0;
-            		    rectWidth = canvas.getWidth();
-        		    }
-        		    
-        		    p.setColor(mSettings.mTextBackgroundColor);
-        		    canvas.drawRect(rectX - textHeight / 2, ty + textHeight / 2, rectX + rectWidth + textHeight / 2, ty - textHeight, p);        			
-        			
-    				p.setColor(mSettings.mTextShadowColor);
-        			canvas.drawText(mSettings.mImprintText, tx + 1, ty + 1, p);
-    				p.setColor(mSettings.mTextColor);
-        			canvas.drawText(mSettings.mImprintText, tx, ty, p);
-				}
+        			DrawText(canvas, p, textsize, mSettings.mTextFontScale, mSettings.mImprintText, (float)mSettings.mTextX, (float)mSettings.mTextY, mSettings.mTextBackgroundLine, mSettings.mTextBackgroundColor, mSettings.mTextShadowColor, mSettings.mTextColor, mSettings.mTextAlign);
 				
 				if(mSettings.mImprintStatusInfo.length() > 0)
 				{
 					String txt = getBatteryInfo(mContext, mSettings.mImprintStatusInfo);
-
-					p.setAntiAlias(true);
-        			p.setTextSize(textsize);
-        			
-        			float textWidth = p.measureText(txt);
-        			float textHeight = p.descent() - p.ascent();
-        			int rectX = (int)(gBmp.getWidth() * mSettings.mStatusInfoX / 100 - textWidth / 2);
-        			int tx = rectX;
-        		    int ty = (int)(gBmp.getHeight() * mSettings.mStatusInfoY / 100 - textHeight / 2);
-        		    int rectWidth = (int)textWidth;
-        		    if(mSettings.mDateTimeBackgroundLine)
-        		    {
-        		    	rectX = 0;
-            		    rectWidth = canvas.getWidth();
-        		    }
-        		    
-        		    p.setColor(mSettings.mDateTimeBackgroundColor);
-        		    canvas.drawRect(rectX - textHeight / 2, ty + textHeight / 2, rectX + rectWidth + textHeight / 2, ty - textHeight, p);        			
-        			
-    				p.setColor(mSettings.mDateTimeShadowColor);
-        			canvas.drawText(txt, tx + 1, ty + 1, p);
-    				p.setColor(mSettings.mDateTimeColor);
-        			canvas.drawText(txt, tx, ty, p);
+        			DrawText(canvas, p, textsize, mSettings.mDateTimeFontScale, txt, (float)mSettings.mStatusInfoX, (float)mSettings.mStatusInfoY, mSettings.mStatusInfoBackgroundLine, mSettings.mStatusInfoBackgroundColor, mSettings.mDateTimeShadowColor, mSettings.mDateTimeColor, mSettings.mStatusInfoAlign);
 				}
 				
 				if(mSettings.mImprintGPS)
 				{
-        			p.setAntiAlias(true);
-        			p.setTextSize(textsize);
         			String txt = String.format("%10f, %10f", gLatitude, gLongitude);
         			if(mSettings.mImprintLocation && gLocation != null)
         				txt = gLocation;
-        			
-        			float textWidth = p.measureText(txt);
-        			float textHeight = p.descent() - p.ascent();
-        			int rectX = (int)(gBmp.getWidth() * mSettings.mGPSX / 100 - textWidth / 2);
-        			int tx = rectX;
-        		    int ty = (int)(gBmp.getHeight() * mSettings.mGPSY / 100 - textHeight / 2);
-        		    int rectWidth = (int)textWidth;
-        		    if(mSettings.mDateTimeBackgroundLine)
-        		    {
-        		    	rectX = 0;
-            		    rectWidth = canvas.getWidth();
-        		    }
-        		    
-        		    p.setColor(mSettings.mDateTimeBackgroundColor);
-        		    canvas.drawRect(rectX - textHeight / 2, ty + textHeight / 2, rectX + rectWidth + textHeight / 2, ty - textHeight, p);        			
-        			
-    				p.setColor(mSettings.mDateTimeShadowColor);
-        			canvas.drawText(txt, tx + 1, ty + 1, p);
-    				p.setColor(mSettings.mDateTimeColor);
-        			canvas.drawText(txt, tx, ty, p);
+        			DrawText(canvas, p, textsize, mSettings.mDateTimeFontScale, txt, (float)mSettings.mGPSX, (float)mSettings.mGPSY, mSettings.mGPSBackgroundLine, mSettings.mDateTimeBackgroundColor, mSettings.mDateTimeShadowColor, mSettings.mDateTimeColor, mSettings.mGPSAlign);
 				}
 
 				Log.v("MobileWebCam", "Workimage: imprint done");
@@ -878,29 +823,53 @@ public class WorkImage implements Runnable, LocationListener
 				
 				mData = out.toByteArray();
 			}
-			else if(MobileWebCam.gIsRunning)
+			else
 			{
-				// set fallback preview image
-				Bitmap smalltmp = Bitmap.createBitmap(100, 100, Bitmap.Config.RGB_565);
-				if(smalltmp != null)
+				if(MobileWebCam.gIsRunning)
 				{
-					Canvas c = new Canvas(smalltmp);
-					if(c != null)
+					// set fallback preview image
+					Bitmap smalltmp = Bitmap.createBitmap(100, 100, Bitmap.Config.RGB_565);
+					if(smalltmp != null)
 					{
-						c.drawARGB(255, 255, 128, 128);
-						Paint p = new Paint();
-	        			p.setAntiAlias(true);
-	        			p.setTextSize(12);
-	    				p.setColor(mSettings.mDateTimeColor);
-						c.drawText("memory", 25, 50, p);
-					}
+						Canvas c = new Canvas(smalltmp);
+						if(c != null)
+						{
+							c.drawARGB(255, 255, 128, 128);
+							Paint p = new Paint();
+		        			p.setAntiAlias(true);
+		        			p.setTextSize(12);
+		    				p.setColor(mSettings.mDateTimeColor);
+							c.drawText("memory", 25, 50, p);
+						}
 
-//***				Bitmap smalltmp = loadScaled(mData, 100, 100, false, false, Bitmap.Config.RGB_565);
-					MobileWebCam.LogI("Smaller preview set from original image because modified version is lost!");
-					mTextUpdater.SetPreview(smalltmp);
+	//***				Bitmap smalltmp = loadScaled(mData, 100, 100, false, false, Bitmap.Config.RGB_565);
+						MobileWebCam.LogI("Smaller preview set from original image because modified version is lost!");
+						mTextUpdater.SetPreview(smalltmp);
+						
+						smalltmp.recycle();
+						smalltmp = null;
+					}
+				}
+				
+				try
+				{
+					gBmp.compress(Bitmap.CompressFormat.JPEG, mSettings.mImageCompression, out);
 					
-					smalltmp.recycle();
-					smalltmp = null;
+					final_w = gBmp.getWidth();
+					final_h = gBmp.getHeight();
+					
+					out.flush();
+					out.close();
+
+					mData = out.toByteArray();				
+				}
+				catch(IOException e)
+				{
+					e.printStackTrace();
+				}
+				catch(OutOfMemoryError e)
+				{
+					MobileWebCam.LogE("Error: unable to compress jpg - out of memory!");
 				}
 			}
 		}
@@ -932,6 +901,8 @@ public class WorkImage implements Runnable, LocationListener
 					new PhotoService.UploadFTPPhotoTask(mContext, mTextUpdater, mSettings).execute(mData);
 				if(mSettings.mStorePictures && !PhotoService.SaveLocked.get() && (MobileWebCam.gPictureCounter % mSettings.mStoreFreq) == 0)
 					new PhotoService.SavePhotoTask(mContext, mTextUpdater, mSettings).execute(mData);
+				
+				ControlReceiver.Triggered = false;
 			}
 			else
 			{
@@ -948,6 +919,34 @@ public class WorkImage implements Runnable, LocationListener
 		Preview.mPhotoLock.set(false);
 		Log.v("MobileWebCam", "PhotoLock released!");
 	}
+	
+	private void DrawText(Canvas canvas, Paint p, float textsize, float fntscale, String txt, float x, float y, boolean bgline, int bgcolor, int shadowcolor, int color, Paint.Align align)
+	{
+		p.setTextAlign(align);
+		p.setAntiAlias(true);
+		p.setTextSize(textsize * fntscale / 6.0f);
+		FontMetrics fm = p.getFontMetrics();
+		
+		float textWidth = p.measureText(txt);
+		float textHeight = fm.bottom - fm.top;
+		int rectX = (int)(canvas.getWidth() * x / 100.0f);
+		int tx = rectX;
+	    int ty = (int)(canvas.getHeight() * y / 100.0f - textHeight / 2);
+	    int rectWidth = (int)textWidth;
+	    if(bgline)
+	    {
+	    	rectX = 0;
+		    rectWidth = canvas.getWidth();
+	    }
+	    
+	    p.setColor(bgcolor);
+	    canvas.drawRect(rectX - textHeight / 2, ty - 2, rectX + rectWidth + textHeight / 2, ty + textHeight + 2, p);        			
+		
+		p.setColor(shadowcolor);
+		canvas.drawText(txt, tx + 1, ty + 1 + Math.abs(fm.ascent), p);
+		p.setColor(color);
+		canvas.drawText(txt, tx, ty + Math.abs(fm.ascent), p);
+	}	
 
 	private boolean isNightImage(Bitmap tmp)
 	{

@@ -61,6 +61,16 @@ public class RemoteControlSettings extends PreferenceActivity implements OnShare
 		         startActivity(intent);
 		         return true;
 	        }
+	    });
+        
+        getPreferenceManager().findPreference("show_configphp").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+	        @Override
+	        public boolean onPreferenceClick(Preference preference) {
+	       	 Intent intent = new Intent(Intent.ACTION_VIEW);
+	       	 intent.setData(Uri.parse("http://www.dngames.de/mobilewebcam/config_php5.html"));
+	            startActivity(intent);
+	            return true;
+	        }
 	    });        
         
 		setIP();
@@ -93,11 +103,11 @@ public class RemoteControlSettings extends PreferenceActivity implements OnShare
         super.onDestroy();
     }
 
-    public static String getLocalIpAddress(Context c)
+    public static String getIpAddress(Context c, boolean local)
     {
 		ConnectivityManager connManager = (ConnectivityManager)c.getSystemService(CONNECTIVITY_SERVICE);
 		NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-		if(mWifi.isConnected())
+		if(mWifi.isConnected() || !local)
 		{
 			try
 			{
@@ -123,7 +133,7 @@ public class RemoteControlSettings extends PreferenceActivity implements OnShare
 
     private void setIP()
     {
-		final String myIP = getLocalIpAddress(RemoteControlSettings.this);
+		final String myIP = getIpAddress(RemoteControlSettings.this, false);
 		if(myIP != null)
 		{
 			final SharedPreferences prefs = getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);

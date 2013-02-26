@@ -19,11 +19,15 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
+import android.annotation.TargetApi;
+import android.graphics.Typeface;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.media.ExifInterface;
+import android.os.Build;
 import android.util.Log;
 
+@TargetApi(Build.VERSION_CODES.ECLAIR)
 public class ExifWrapper
 {
 	/* calling here forces class initialization */
@@ -71,4 +75,9 @@ public class ExifWrapper
 			MobileWebCam.LogE("No EXIF gps tag written!");
 		}
 	}	
+
+	public static Typeface createTypefaceFromFile(String path)
+	{
+		return Typeface.createFromFile(path);
+	}
 }

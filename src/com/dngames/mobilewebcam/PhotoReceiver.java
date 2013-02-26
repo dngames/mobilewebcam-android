@@ -35,6 +35,12 @@ public class PhotoReceiver extends BroadcastReceiver
 		if(!prefs.getBoolean("mobilewebcam_enabled", true))
 			return;
 		
+		if(prefs.getBoolean("lowbattery_pause", false) && WorkImage.getBatteryLevel(context) < 15)
+		{
+			MobileWebCam.LogI("Battery low ... pause");
+			return;
+		}
+		
 		mBGPhoto.mContext = new WeakReference<Context>(context);
 		
         String v = prefs.getString("camera_mode", "1");
@@ -83,7 +89,7 @@ public class PhotoReceiver extends BroadcastReceiver
 			txt = contentText[2];
 	    if(prefs.getBoolean("server_enabled", true))
 	    {
-			String myIP = RemoteControlSettings.getLocalIpAddress(c);
+			String myIP = RemoteControlSettings.getIpAddress(c, true);
 			if(myIP != null)
 				txt = txt.subSequence(0, txt.length() - 5) + " http://" + myIP + ":" + MobileWebCamHttpService.getPort(prefs);
 	    }

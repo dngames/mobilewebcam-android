@@ -27,6 +27,8 @@ import android.os.Handler;
 import android.os.PowerManager;
 import android.util.Log;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 public class CamActivity extends Activity
@@ -35,23 +37,27 @@ public class CamActivity extends Activity
     
     protected Preview mPreview = null;
 	
-    public DrawOnTop mDrawOnTop;
-	public TextView mTextView = null;
-	public TextView mMotionTextView = null;	
-	
 	protected SharedPreferences mPrefs;
     
     protected Handler mHandler = new Handler();
     
-    protected int mLayout = R.layout.layout; 
+    protected int mLayout = R.layout.layout;
+
+    public DrawOnTop mDrawOnTop;
+	public TextView mTextView = null;
+	public TextView mCamNameView = null;
+	public TextView mMotionTextView = null;	
+	public LinearLayout mTextViewFrame = null;
+	public RelativeLayout mCamNameViewFrame = null;
     
     @Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         
         // Hide the window title.
 //***        requestWindowFeature(Window.FEATURE_NO_TITLE);
-    
+
         mPrefs = getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
 		mSettings = new PhotoSettings(CamActivity.this);
 
@@ -62,14 +68,6 @@ public class CamActivity extends Activity
         mPreview = (Preview)findViewById(R.id.preview);
         mPreview.SetSettings(mSettings);
         
-//***        if(DEBUG_MOTIONDETECT)
-        {
-        	mDrawOnTop = (DrawOnTop)findViewById(R.id.drawontop);
-        }
-		
-		mTextView = (TextView)findViewById(R.id.status);
-		mMotionTextView = (TextView)findViewById(R.id.motion);
-		
         mSettings.EnableMobileWebCam(mSettings.mCameraStartupEnabled);
     }
     

@@ -1,27 +1,16 @@
-/* Copyright 2012 Michael Haar
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-
 package com.dngames.mobilewebcam;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintStream;
 
 import android.app.ProgressDialog;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -35,6 +24,7 @@ import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.BaseAdapter;
+import android.widget.Toast;
 import android.content.Context;
 
 import android.net.NetworkInfo;
@@ -45,7 +35,7 @@ import java.net.SocketException;
 import org.apache.http.conn.util.InetAddressUtils;
 import java.util.Enumeration;
 
-public class SystemSettings extends PreferenceActivity implements OnSharedPreferenceChangeListener
+public class SystemSettings extends PreferenceActivity
 {
 	 @Override
 	 public void onCreate(Bundle savedInstanceState)
@@ -59,7 +49,6 @@ public class SystemSettings extends PreferenceActivity implements OnSharedPrefer
 		 		 
         getPreferenceManager().setSharedPreferencesName(MobileWebCam.SHARED_PREFS_NAME);
 		this.addPreferencesFromResource(R.layout.systemsettings);
-        getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 
         getPreferenceManager().findPreference("info_open").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
 	         @Override
@@ -90,27 +79,69 @@ public class SystemSettings extends PreferenceActivity implements OnSharedPrefer
 		{
         	getPreferenceManager().findPreference("market_open").setEnabled(false);
 		}*/
+		        
+		final SharedPreferences prefs = SystemSettings.this.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);		        
+		        
+        getPreferenceManager().findPreference("backup_settings").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
+        {
+	         @Override
+	         public boolean onPreferenceClick(Preference preference)
+	         {
+		    	File path = new File(Environment.getExternalStorageDirectory() + "/MobileWebCam/");
+    	    	boolean exists = path.exists();
+    	    	if(!exists)
+    	    	    exists = path.mkdirs();
+    	    	if(exists)
+    	    	{
+					try
+					{
+						PrintStream ps = new PrintStream(new File(path, "config.txt"));
+						ps.print(PhotoSettings.DumpSettings(prefs));
+						ps.close();
+						Toast.makeText(SystemSettings.this, "ok", Toast.LENGTH_SHORT).show();						
+					}
+					catch (FileNotFoundException e)
+					{
+						Toast.makeText(SystemSettings.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+						e.printStackTrace();
+					}
+    	    	}
+				return true;
+	         }
+         });
 
-		setIP();
-		
-        getPreferenceManager().findPreference("nano").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-	        @Override
-	        public boolean onPreferenceClick(Preference preference) {
-	       	 Intent intent = new Intent(Intent.ACTION_VIEW);
-	       	 intent.setData(Uri.parse("http://elonen.iki.fi/code/nanohttpd/"));
-	            startActivity(intent);
-	            return true;
-	        }
-	    });
-	    	    		}
-	 
-     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
-     {
-     }
-     
-    @Override
-    protected void onDestroy() {
-        getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
-        super.onDestroy();
-    }
+        getPreferenceManager().findPreference("read_settings").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
+        {
+	         @Override
+	         public boolean onPreferenceClick(Preference preference)
+	         {
+	        	File path = new File(Environment.getExternalStorageDirectory() + "/MobileWebCam/config.txt");
+    	    	if(path.exists())
+    	    	{
+					StringBuilder cfg = new StringBuilder();
+					try
+					{
+						BufferedReader br = new BufferedReader(new FileReader(path));
+						String line;
+						while ((line = br.readLine()) != null)
+						{
+							cfg.append(line);
+							cfg.append('\n');
+						}
+						PhotoSettings.GETSettings(cfg.toString(), prefs);
+						Toast.makeText(SystemSettings.this, "ok", Toast.LENGTH_SHORT).show();						
+					}
+					catch(IOException e)
+					{
+						Toast.makeText(SystemSettings.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+					}
+    	    	}
+    	    	else
+    	    	{
+					Toast.makeText(SystemSettings.this, path + "config.txt not found!", Toast.LENGTH_LONG).show();
+    	    	}
+				return true;
+	         }
+         });
+	 }
 };

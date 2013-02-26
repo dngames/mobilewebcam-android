@@ -25,6 +25,7 @@
 		<item>Original</item>
     	<item>Custom</item>
 	</string-array>
+	<!-- attention when changing this - opensmartcam setup sets this to "3" -->
 	<string-array name="entryvalues_list_picture_size">
 		<item>0</item>
 		<item>1</item>
@@ -101,5 +102,19 @@
 		<item>STRETCH</item>
 		<item>NOSCALE</item>
 	</string-array>	
-  
+
+	<string name="title_imprintalign">Text Alignment</string>
+	<string name="summary_imprintalign">Where is the text placed in the horizontal line.</string>
+	<string name="dialog_title_imprintalign">Text Align</string>
+		<string-array name="entries_imprintalign">
+		<item>Left</item>
+		<item>Center</item>
+		<item>Right</item>
+	</string-array>
+	<string-array name="entryvalues_imprintalign">
+		<item>LEFT</item>
+		<item>CENTER</item>
+		<item>RIGHT</item>
+	</string-array>	
+		
 </resources>
