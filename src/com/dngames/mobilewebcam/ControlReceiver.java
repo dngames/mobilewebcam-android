@@ -13,6 +13,8 @@ import android.widget.Toast;
 
 public class ControlReceiver extends BroadcastReceiver
 {
+	public static boolean Triggered = false;
+	
     @Override
     public void onReceive(Context context, Intent intent)
     {
@@ -27,6 +29,8 @@ public class ControlReceiver extends BroadcastReceiver
 		}
 		else if(intent.getAction().equals("com.dngames.mobilewebcam.PHOTO"))
 		{
+			Triggered = true;
+			
 			String v = prefs.getString("camera_mode", "1");
 			if(v.length() < 1 || v.length() > 9)
 	        	v = "1";

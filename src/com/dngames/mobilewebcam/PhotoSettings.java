@@ -50,6 +50,7 @@ import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.hardware.Camera;
 import android.os.AsyncTask;
 import android.os.Environment;
@@ -69,17 +70,37 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
     {
         String key(); 
         String val(); 
+        String help() default "";
+        String category() default "";
+        String htmltype() default "text";
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    @interface IntegerPref
+    @interface IntPref
     {
         String key(); 
         int val(); 
         int factor() default 1; // factor to apply for calculations (settings var but not pref value)
         int min() default Integer.MIN_VALUE; // range min allowed value
         int max() default Integer.MAX_VALUE; // range max allowed value
+        String help() default "";
+        String category() default "";
+        String select() default "";
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    @interface EditIntPref
+    {
+        String key(); 
+        int val(); 
+        int factor() default 1; // factor to apply for calculations (settings var but not pref value)
+        int min() default Integer.MIN_VALUE; // range min allowed value
+        int max() default Integer.MAX_VALUE; // range max allowed value
+        String help() default "";
+        String category() default "";
+        String select() default "";
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -87,21 +108,16 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
     @interface BooleanPref
     {
         String key(); 
-        boolean val(); 
+        boolean val();
+        String help() default "";
+        String category() default "";
     }
 
-    @BooleanPref(key = "server_upload", val = true)
-	public boolean mUploadPictures = true;
-	@BooleanPref(key = "ftpserver_upload", val = false)
+	@BooleanPref(key = "ftpserver_upload", val = false, help = "upload to ftp", category = "Upload")
 	public boolean mFTPPictures = false;
-	@BooleanPref(key = "cam_storepictures", val = false)
+	@BooleanPref(key = "cam_storepictures", val = false, help = "store on SDCard", category = "Upload")
 	public boolean mStorePictures = false;
-	@BooleanPref(key = "cam_mailphoto", val = false)
-	public boolean mMailPictures = false;
-	@BooleanPref(key = "dropbox_upload", val = false)
-	public boolean mDropboxPictures = false;
 	
-	final String mDefaulturl = "http://www.YOURDOMAIN.COM/mobilewebcam.php";
 	final String mDefaultFTPurl = "FTP.YOURDOMAIN.COM";
     
 	@StringPref(key = "cam_url", val = mDefaulturl)
@@ -112,17 +128,19 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public String mPassword = "";
     @StringPref(key = "ftpserver_defaultname", val = "current.jpg")
 	public String mDefaultname = "current.jpg";
-    @BooleanPref(key = "use_sftp", val = false)
-	public boolean mSFTP = false;
+    @EditIntPref(key = "ftp_batchupload", val = 1, min = 1, help = "FTP Batch Upload", category = "Upload")
+    public int mFTPBatch = 1;
+    @BooleanPref(key = "ftp_batchalways", val = false, help = "FTP reliable upload", category = "Upload")
+    public boolean mReliableUpload = false;
     @BooleanPref(key = "cam_filenames", val = true)
 	public boolean mFTPNumbered = true;
     @BooleanPref(key = "cam_datetime", val = false)
 	public boolean mFTPTimestamp = false;
-    @IntegerPref(key = "ftp_keepoldpics", val = 0)
+    @EditIntPref(key = "ftp_keepoldpics", val = 0)
 	public int mFTPKeepPics = 0;
 	@StringPref(key = "ftpserver_url", val = mDefaultFTPurl)
 	public String mFTP = mDefaultFTPurl;
-	@IntegerPref(key = "ftp_port", val = 21)
+	@EditIntPref(key = "ftp_port", val = 21)
 	public int mFTPPort = 21;
 	@StringPref(key = "ftp_dir", val = "")
 	public String mFTPDir = "";
@@ -132,85 +150,86 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public String mFTPPassword = "";
     @BooleanPref(key = "cam_passiveftp", val = true)
 	public boolean mFTPPassive = true;
-	@StringPref(key = "dropbox_dir", val = "")
-	public String mDropboxDir = "";
-    @StringPref(key = "dropbox_defaultname", val = "current.jpg")
-	public String mDropboxDefaultname = "current.jpg";
-    @BooleanPref(key = "dropbox_filenames", val = false)
-	public boolean mDropboxNumbered = true;
-    @BooleanPref(key = "dropbox_datetime", val = false)
-	public boolean mDropboxTimestamp = false;
-    @IntegerPref(key = "dropbox_keepoldpics", val = 0)
-	public int mDropboxKeepPics = 0;
+	@BooleanPref(key = "ftp_keep_open", val = false)
+	public boolean mFTPKeepConnected = false;
     
-    @IntegerPref(key = "cam_refresh", val = 60, factor = 1000)
+    @EditIntPref(key = "cam_refresh", val = 60, factor = 1000, help = "Refresh Duration", category = "Activity")
 	public int mRefreshDuration = 60000;
-    @IntegerPref(key = "picture_size_sel", val = 1)
+    @EditIntPref(key = "picture_size_sel", val = 1, help = "Picture Size", select = "0 = Small, 1 = Normal, 2 = Medium, 3 = Large, 4 = Original, 5 = Custom", category = "Picture")
 	public int mImageSize = 1;
-    @IntegerPref(key = "picture_size_custom_w", val = 320)
+    @EditIntPref(key = "picture_size_custom_w", val = 320, help = "Custom Picture Size Width", category = "Picture")
 	public int mCustomImageW = 320;
-    @IntegerPref(key = "picture_size_custom_h", val = 240)
+    @EditIntPref(key = "picture_size_custom_h", val = 240, help = "Custom Picture Size Height", category = "Picture")
 	public int mCustomImageH = 240;
 	public enum ImageScaleMode { LETTERBOX, CROP, STRETCH, NOSCALE };
 	public ImageScaleMode mCustomImageScale = ImageScaleMode.CROP;
-    @IntegerPref(key = "picture_compression", val = 85)
+    @IntPref(key = "picture_compression", val = 85)
 	public int mImageCompression = 85;
     @BooleanPref(key = "picture_autofocus", val = false)
 	public boolean mAutoFocus = false;
-	@BooleanPref(key = "picture_rotate", val = false)
+	@BooleanPref(key = "picture_rotate", val = false, help = "rotate picture to portrait", category = "Picture")
 	public boolean mForcePortraitImages = false;
 	@BooleanPref(key = "picture_flip", val = false)
 	public boolean mFlipImages = false;
     @BooleanPref(key = "picture_autorotate", val = false)
 	public boolean mAutoRotateImages = false;
-    @StringPref(key = "cam_email", val = "")
-	public String mEmailReceiverAddress = "";
-	@StringPref(key = "cam_emailsubject", val = "")
-	public String mEmailSubject = "";
 	public enum Mode { MANUAL, NORMAL, HIDDEN, BACKGROUND, BROADCASTRECEIVER };
 	public Mode mMode = Mode.NORMAL;
-	@BooleanPref(key = "motion_detect", val = false)
+	@BooleanPref(key = "motion_detect", val = false, help = "motion detection enabled", category = "Activity")
 	public boolean mMotionDetect = false;
-	@IntegerPref(key = "motion_change", val = 15)
+	@IntPref(key = "motion_change", val = 15)
 	public int mMotionColorChange = 15;
-	@IntegerPref(key = "motion_value", val = 25)
+	@IntPref(key = "motion_value", val = 25)
 	public int mMotionPixels = 25;
-	@IntegerPref(key = "motion_keepalive_refresh", val = 3600, factor = 1000)
+	@EditIntPref(key = "motion_keepalive_refresh", val = 3600, factor = 1000)
 	public int mMotionDetectKeepAliveRefresh = 3600 * 1000;
 	@StringPref(key = "broadcast_activation", val = "")
 	public String mBroadcastReceiver = "";
-	@BooleanPref(key = "night_detect", val = false)
+	@BooleanPref(key = "night_detect", val = false, help = "no dark/night picture upload.", category = "Activity")
 	public boolean mNightDetect = false;
-	@BooleanPref(key = "night_autoflash", val = false)
+	@BooleanPref(key = "night_autoflash", val = false, help = "auto flashlight for dark pictures", category = "Activity")
 	public boolean mNightAutoFlash = false;
 	public boolean mAutoStart = false;
-    @IntegerPref(key = "reboot", val = 0)
+	@EditIntPref(key = "reboot", val = 0)
 	public int mReboot = 0; 
-	@StringPref(key = "activity_starttime", val = "00:00")
+	@StringPref(key = "activity_starttime", val = "00:00", help = "Time Start", htmltype = "time", category = "Activity")
 	public String mStartTime = "00:00";
-	@StringPref(key = "activity_endtime", val = "24:00")
+	@StringPref(key = "activity_endtime", val = "24:00", help = "Time End", htmltype = "time", category = "Activity")
 	public String mEndTime = "24:00";
+	@BooleanPref(key = "lowbattery_pause", val = false, help = "low battery pause", category = "Activity")
+	public boolean mLowBatteryPause = false;
 	@StringPref(key = "imprint_datetimeformat", val = "yyyy/MM/dd   HH:mm:ss")
 	public String mImprintDateTime = "yyyy/MM/dd   HH:mm:ss";
+	@StringPref(key = "imprint_text", val = "mobilewebcam", help = "Title", category = "Picture")
 	public String mImprintText = "mobilewebcam " + android.os.Build.MODEL;
 	@StringPref(key = "imprint_statusinfo", val = "Battery %d%% %.1f°C")
 	public String mImprintStatusInfo = "Battery %03d%% %3.1f�C";
 	public int mTextColor = Color.WHITE;
 	public int mTextShadowColor = Color.BLACK;
-	public int mTextBackgroundColor = Color.TRANSPARENT;
+	public int mTextBackgroundColor = Color.argb(0x80, 0xA0, 0x00, 0x00);
 	public boolean mTextBackgroundLine = true;
-	public int mTextX = 15, mTextY = 3;
+	public int mTextX = 15, mTextY = 5;
+	public Paint.Align mTextAlign = Paint.Align.LEFT;
+	public float mTextFontScale = 6.0f;
+	public String mTextFontname = "";
 	public int mDateTimeColor = Color.WHITE;
 	public int mDateTimeShadowColor = Color.BLACK;
-	public int mDateTimeBackgroundColor = Color.TRANSPARENT;
+	public int mDateTimeBackgroundColor = Color.argb(0x80, 0xA0, 0x00, 0x00);
 	public boolean mDateTimeBackgroundLine = true;
 	public int mDateTimeX = 85, mDateTimeY = 97;
+	public Paint.Align mDateTimeAlign = Paint.Align.RIGHT;
+	public float mDateTimeFontScale = 6.0f;
 	public int mStatusInfoX = 85, mStatusInfoY = 92;
+	public Paint.Align mStatusInfoAlign = Paint.Align.LEFT;
+	public int mStatusInfoBackgroundColor = Color.TRANSPARENT;
+	public boolean mStatusInfoBackgroundLine = false;	
 	@BooleanPref(key = "imprint_gps", val = false)
 	public boolean mImprintGPS = false;
 	@BooleanPref(key = "imprint_location", val = false)
 	public boolean mImprintLocation = false;
 	public int mGPSX = 85, mGPSY = 87;
+	public Paint.Align mGPSAlign = Paint.Align.CENTER;
+	public boolean mGPSBackgroundLine = false;
 	@BooleanPref(key = "imprint_picture", val = false)
 	public boolean mImprintPicture = false;
 	public boolean mFilterPicture = false;
@@ -225,34 +244,20 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	boolean mShutterSound = true;
     @BooleanPref(key = "cam_front", val = false)
 	public boolean mFrontCamera = false;
-    @IntegerPref(key = "zoom", val = 0)        
+    @EditIntPref(key = "zoom", val = 0, help = "Zoom 0-100", category = "Picture")        
 	public int mZoom = 0;
     @StringPref(key = "whitebalance", val = Camera.Parameters.WHITE_BALANCE_AUTO)
 	public String mWhiteBalance = Camera.Parameters.WHITE_BALANCE_AUTO;
-    @BooleanPref(key = "cam_flash", val = false)
+    @BooleanPref(key = "cam_flash", val = false, help = "flashlight enabled", category = "Activity")
 	public boolean mCameraFlash = false;
 	
-	@StringPref(key = "email_sender", val = "")
-	public String mMailAddress = "";
-	@StringPref(key = "email_password", val = "")
-	public String mMailPassword = "";
-	@StringPref(key = "email_host", val = "smtp.gmail.com")
-	public String mMailHost = "smtp.gmail.com";
-	@StringPref(key = "email_port", val = "465")
-	public String mMailPort = "465";
-	@BooleanPref(key = "email_ssl", val = true)
-	public boolean mMailSSL = true;
-
-	@IntegerPref(key = "server_every", val = 1, min = 1)
-	public int mServerFreq = 1;
-	@IntegerPref(key = "ftp_every", val = 1, min = 1)
+	@EditIntPref(key = "ftp_every", val = 1, min = 1)
 	public int mFTPFreq = 1;
-	@IntegerPref(key = "mail_every", val = 1, min = 1)
-	public int mMailFreq = 1;
-	@IntegerPref(key = "dropbox_every", val = 1, min = 1)
-	public int mDropboxFreq = 1;
-	@IntegerPref(key = "store_every", val = 1, min = 1)
+	@EditIntPref(key = "store_every", val = 1, min = 1)
 	public int mStoreFreq = 1;
+	
+	@BooleanPref(key = "log_upload", val = false, help = "send log", category = "Activity")
+	public boolean mLogUpload = false;
 	    
 	public Bitmap mImprintBitmap = null;
 	
@@ -313,42 +318,86 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	@Override
     public void onSharedPreferenceChanged(SharedPreferences prefs, String key)
 	{
+    	if(key == "cam_refresh")
+    	{
+    		int new_refresh = getEditInt(mContext, prefs, "cam_refresh", 60);
+    		if(!mNoToasts && new_refresh != mRefreshDuration)
+    			Toast.makeText(mContext, "Camera refresh set to " + new_refresh + " seconds!", Toast.LENGTH_SHORT).show();
+    	}
+		
 		// get all preferences
 		for(Field f : getClass().getFields())
 		{
-			BooleanPref bp = f.getAnnotation(BooleanPref.class);
-			if(bp != null)
 			{
-				try {
-					f.setBoolean(this, prefs.getBoolean(bp.key(), bp.val()));
-				} catch (Exception e) {
-					e.printStackTrace();
+				BooleanPref bp = f.getAnnotation(BooleanPref.class);
+				if(bp != null)
+				{
+					try {
+						f.setBoolean(this, prefs.getBoolean(bp.key(), bp.val()));
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			}
-			IntegerPref ip = f.getAnnotation(IntegerPref.class);
-			if(ip != null)
 			{
-				try
+				EditIntPref ip = f.getAnnotation(EditIntPref.class);
+				if(ip != null)
 				{
-			        int eval = getEditInt(mContext, prefs, ip.key(), ip.val()) * ip.factor();
-			        if(ip.max() != Integer.MAX_VALUE)
-			        	eval = Math.min(eval, ip.max());
-			        if(ip.min() != Integer.MIN_VALUE)
-			        	eval = Math.max(eval, ip.min());
-					f.setInt(this, eval);
-				}
-				catch (Exception e)
-				{
-					e.printStackTrace();
+					try
+					{
+				        int eval = getEditInt(mContext, prefs, ip.key(), ip.val()) * ip.factor();
+				        if(ip.max() != Integer.MAX_VALUE)
+				        	eval = Math.min(eval, ip.max());
+				        if(ip.min() != Integer.MIN_VALUE)
+				        	eval = Math.max(eval, ip.min());
+						f.setInt(this, eval);
+					}
+					catch (Exception e)
+					{
+						e.printStackTrace();
+					}
 				}
 			}
-			StringPref sp = f.getAnnotation(StringPref.class);
-			if(sp != null)
 			{
-				try {
-					f.set(this, prefs.getString(sp.key(), sp.val()));
-				} catch (Exception e) {
-					e.printStackTrace();
+				IntPref ip = f.getAnnotation(IntPref.class);
+				if(ip != null)
+				{
+					try
+					{
+				        int eval = prefs.getInt(ip.key(), ip.val()) * ip.factor();
+				        if(ip.max() != Integer.MAX_VALUE)
+				        	eval = Math.min(eval, ip.max());
+				        if(ip.min() != Integer.MIN_VALUE)
+				        	eval = Math.max(eval, ip.min());
+						f.setInt(this, eval);
+					}
+					catch (Exception e)
+					{
+						// handle wrong set class
+						e.printStackTrace();
+						Editor edit = prefs.edit();
+						edit.remove(ip.key());
+						edit.putInt(ip.key(), ip.val());
+						edit.commit();
+						try {
+							f.setInt(this, ip.val());
+						} catch (IllegalArgumentException e1) {
+							e1.printStackTrace();
+						} catch (IllegalAccessException e1) {
+							e1.printStackTrace();
+						}
+					}
+				}
+			}
+			{
+				StringPref sp = f.getAnnotation(StringPref.class);
+				if(sp != null)
+				{
+					try {
+						f.set(this, prefs.getString(sp.key(), sp.val()));
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		}
@@ -359,25 +408,35 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		mCameraStartupEnabled = prefs.getBoolean("cam_autostart", true);
         mShutterSound = prefs.getBoolean("shutter", true); 
 		mDateTimeColor = GetPrefColor(prefs, "datetime_color", "#FFFFFFFF", Color.WHITE);
-		mDateTimeShadowColor = GetPrefColor(prefs, "datetime_shadowcolor", "#FFFFFFFF", Color.BLACK);
-		mDateTimeBackgroundColor = GetPrefColor(prefs, "datetime_backcolor", "#00000000", Color.TRANSPARENT);
+		mDateTimeShadowColor = GetPrefColor(prefs, "datetime_shadowcolor", "#FF000000", Color.BLACK);
+		mDateTimeBackgroundColor = GetPrefColor(prefs, "datetime_backcolor", "#80FF0000", Color.argb(0x80, 0xFF, 0x00, 0x00));
         mDateTimeBackgroundLine = prefs.getBoolean("datetime_fillline", true); 
-		mDateTimeX = prefs.getInt("datetime_x", 85);
-		mDateTimeY = prefs.getInt("datetime_y", 97);
+		mDateTimeX = prefs.getInt("datetime_x", 98);
+		mDateTimeY = prefs.getInt("datetime_y", 98);
+		mDateTimeAlign = Paint.Align.valueOf(prefs.getString("datetime_imprintalign", "RIGHT"));
+
+		mDateTimeFontScale = (float)prefs.getInt("datetime_fontsize", 6);
 	
-		mImprintText = prefs.getString("imprint_text", "mobilewebcam " + android.os.Build.MODEL);
 		mTextColor = GetPrefColor(prefs, "text_color", "#FFFFFFFF", Color.WHITE);
-		mTextShadowColor = GetPrefColor(prefs, "text_shadowcolor", "#FFFFFFFF", Color.BLACK);
-		mTextBackgroundColor = GetPrefColor(prefs, "text_backcolor", "#00000000", Color.TRANSPARENT);
+		mTextShadowColor = GetPrefColor(prefs, "text_shadowcolor", "#FF000000", Color.BLACK);
+		mTextBackgroundColor = GetPrefColor(prefs, "text_backcolor", "#80FF0000", Color.argb(0x80, 0xFF, 0x00, 0x00));
         mTextBackgroundLine = prefs.getBoolean("text_fillline", true); 
-		mTextX = prefs.getInt("text_x", 15);
-		mTextY = prefs.getInt("text_y", 3);
+		mTextX = prefs.getInt("text_x", 2);
+		mTextY = prefs.getInt("text_y", 2);
+		mTextAlign = Paint.Align.valueOf(prefs.getString("text_imprintalign", "LEFT"));
+		mTextFontScale = (float)prefs.getInt("infotext_fontsize", 6);
+		mTextFontname = prefs.getString("infotext_fonttypeface", "");
 
-		mStatusInfoX = prefs.getInt("statusinfo_x", 85);
-		mStatusInfoY = prefs.getInt("statusinfo_y", 92);
+		mStatusInfoX = prefs.getInt("statusinfo_x", 2);
+		mStatusInfoY = prefs.getInt("statusinfo_y", 98);
+		mStatusInfoAlign = Paint.Align.valueOf(prefs.getString("statusinfo_imprintalign", "LEFT"));
+		mStatusInfoBackgroundColor = GetPrefColor(prefs, "statusinfo_backcolor", "#00000000", Color.TRANSPARENT);
+		mStatusInfoBackgroundLine = prefs.getBoolean("statusinfo_fillline", false); 
 
-		mGPSX = prefs.getInt("gps_x", 85);
-		mGPSY = prefs.getInt("gps_y", 87);
+		mGPSX = prefs.getInt("gps_x", 98);
+		mGPSY = prefs.getInt("gps_y", 2);
+		mGPSAlign = Paint.Align.valueOf(prefs.getString("gps_imprintalign", "RIGHT"));
+		mGPSBackgroundLine = prefs.getBoolean("gps_fillline", false); 
 		
 		mFilterPicture = false; //***prefs.getBoolean("filter_picture", false);
         mFilterType = getEditInt(mContext, prefs, "filter_sel", 0);
@@ -458,47 +517,51 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	{
 		StringBuilder s = new StringBuilder();
 
-		Map<String, Object> all = new HashMap<String, Object>();
+		Map<String, Object[]> all = new HashMap<String, Object[]>();
 		
 		for(Field f : PhotoSettings.class.getFields())
 		{
-			BooleanPref bp = f.getAnnotation(BooleanPref.class);
-			if(bp != null)
 			{
-				boolean val = prefs.getBoolean(bp.key(), bp.val());
-				all.put(bp.key(), val);
+				BooleanPref bp = f.getAnnotation(BooleanPref.class);
+				if(bp != null)
+				{
+					boolean val = prefs.getBoolean(bp.key(), bp.val());
+					all.put(bp.key(), new Object[] { val, bp.help() });
+				}
 			}
-			StringPref sp = f.getAnnotation(StringPref.class);
-			if(sp != null)
 			{
-				String val = prefs.getString(sp.key(), sp.val());
-				all.put(sp.key(), val);
+				StringPref sp = f.getAnnotation(StringPref.class);
+				if(sp != null)
+				{
+					String val = prefs.getString(sp.key(), sp.val());
+					all.put(sp.key(), new Object[] { val, sp.help() });
+				}
 			}
-			IntegerPref ip = f.getAnnotation(IntegerPref.class);
-			if(ip != null)
 			{
-				try
+				EditIntPref ip = f.getAnnotation(EditIntPref.class);
+				if(ip != null)
 				{
 					String val = prefs.getString(ip.key(), "" + ip.val());
-					all.put(ip.key(), val);
+					all.put(ip.key(), new Object[] { val, ip.help() });
 				}
-				catch(ClassCastException e)
+			}
+			{
+				IntPref ip = f.getAnnotation(IntPref.class);
+				if(ip != null)
 				{
-					try
-					{
-						int val = prefs.getInt(ip.key(), ip.val());
-						all.put(ip.key(), val);
-					}
-					catch(ClassCastException ei)
-					{
-						ei.printStackTrace();
-					}
+					int val = prefs.getInt(ip.key(), ip.val());
+					all.put(ip.key(), new Object[] { val, ip.help() });
 				}
 			}
 		}
 		
 		for(Map.Entry<String, ?> p : all.entrySet())
-			s.append(p.getKey() + ":" + p.getValue() + "\n");
+		{
+			Object[] vals = (Object[])p.getValue();
+			if(((String)vals[1]).length() > 0)
+				s.append("// " + vals[1] + "\n");
+			s.append(p.getKey() + ":" + vals[0] + "\n");
+		}
 		
 		return s.toString();
 	}
@@ -506,17 +569,23 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	private static <T> T parseObjectFromString(String s, Class<T> c) throws Exception
 	{
 	    return c.getConstructor(new Class[] {String.class }).newInstance(s);
-	}	
+	}
+	
+	private static int gLastGETSettingsPictureCnt = -1;
 	
 	public static void GETSettings(final Context context)
 	{
 		// check for new settings when done
 		final SharedPreferences prefs = context.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
 		final String settingsurl = prefs.getString("remote_config_url", "");
+		final int settingsfreq = Math.max(1, PhotoSettings.getEditInt(context, prefs, "remote_config_every", 1));
 		final String login = prefs.getString("remote_config_login", "");
 		final String password = prefs.getString("remote_config_password", "");
-		if(settingsurl.length() > 0)
+		final boolean noToasts = prefs.getBoolean("no_messages", false);
+		if(settingsurl.length() > 0 && gLastGETSettingsPictureCnt < MobileWebCam.gPictureCounter && (MobileWebCam.gPictureCounter % settingsfreq) == 0)
 		{
+			gLastGETSettingsPictureCnt = MobileWebCam.gPictureCounter;
+
 			new AsyncTask<String, Void, String>()
 			{
 				@Override
@@ -579,11 +648,16 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 					if(result != null)
 					{
 						if(result.startsWith("GET Config Error!\n"))
-							Toast.makeText(context, result, Toast.LENGTH_LONG).show();
+						{
+							if(!noToasts)
+								Toast.makeText(context, result, Toast.LENGTH_SHORT).show();
+						}
 						else
+						{
 							PhotoSettings.GETSettings(result, prefs);
+						}
 					}
-					else
+					else if(!noToasts)
 						Toast.makeText(context, "GET config failed!", Toast.LENGTH_SHORT).show();
 				}					
 			}.execute();
@@ -599,15 +673,26 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		
 		for(Field f : PhotoSettings.class.getFields())
 		{
-			BooleanPref bp = f.getAnnotation(BooleanPref.class);
-			if(bp != null)
-				all.put(bp.key(), bp.val());
-			StringPref sp = f.getAnnotation(StringPref.class);
-			if(sp != null)
-				all.put(sp.key(), sp.val());
-			IntegerPref ip = f.getAnnotation(IntegerPref.class);
-			if(ip != null)
-				all.put(ip.key(), ip.val());
+			{
+				BooleanPref bp = f.getAnnotation(BooleanPref.class);
+				if(bp != null)
+					all.put(bp.key(), bp.val());
+			}
+			{
+				StringPref sp = f.getAnnotation(StringPref.class);
+				if(sp != null)
+					all.put(sp.key(), sp.val());
+			}
+			{
+				EditIntPref ip = f.getAnnotation(EditIntPref.class);
+				if(ip != null)
+					all.put(ip.key(), ip.val() + "");
+			}
+			{
+				IntPref ip = f.getAnnotation(IntPref.class);
+				if(ip != null)
+					all.put(ip.key(), ip.val());
+			}
 		}
 		
 		for(Map.Entry<String, ?> p : all.entrySet())
@@ -618,18 +703,27 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 				{
 					try
 					{
-						String value = s.split(":")[1];
-						Class c = p.getValue().getClass();
-						Object val = parseObjectFromString(value, c);
-
-						if(c == String.class)
-							edit.putString(p.getKey(), (String)val);
-						else if(c == Boolean.class)
-							edit.putBoolean(p.getKey(), (Boolean)val);
-						else if(c == Integer.class)
-							edit.putString(p.getKey(), val.toString());
+						String value = s.split(":", 2)[1];
+						if(value.length() > 0)
+						{
+							Class c = p.getValue().getClass();
+							Object val = parseObjectFromString(value, c);
+	
+							if(c == String.class)
+								edit.putString(p.getKey(), (String)val);
+							else if(c == Boolean.class)
+								edit.putBoolean(p.getKey(), (Boolean)val);
+							else if(c == String.class)
+								edit.putString(p.getKey(), val.toString());
+							else if(c == Integer.class)
+								edit.putInt(p.getKey(), (Integer)val);
+							else
+								throw new UnsupportedOperationException(c.toString());
+						}
 						else
-							throw new UnsupportedOperationException(c.toString());
+						{
+							MobileWebCam.LogE("Warning: config.txt entry '" + p.getKey() + "' value is empty!");
+						}
 					}
 					catch(Exception e)
 					{

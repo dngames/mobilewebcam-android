@@ -56,7 +56,16 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
     layout.addView(mSeekBar, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.FILL_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
     if (shouldPersist())
-      mValue = getPersistedInt(mDefault);
+    {
+    	try
+    	{
+    		mValue = getPersistedInt(mDefault);
+    	}
+    	catch(ClassCastException e)
+    	{
+    		mValue = mDefault;
+    	}
+    }
 
     mSeekBar.setMax(mMax);
     mSeekBar.setProgress(mValue);
@@ -73,9 +82,20 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
   {
     super.onSetInitialValue(restore, defaultValue);
     if (restore) 
-      mValue = shouldPersist() ? getPersistedInt(mDefault) : 0;
-    else 
+    {
+    	try
+    	{
+    		mValue = shouldPersist() ? getPersistedInt(mDefault) : 0;
+    	}
+    	catch(ClassCastException e)
+    	{
+    		mValue = mDefault;
+    	}
+    }
+    else
+    {
       mValue = (Integer)defaultValue;
+    }
   }
 
   public void onProgressChanged(SeekBar seek, int value, boolean fromTouch)
@@ -83,7 +103,15 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
     String t = String.valueOf(value);
     mValueText.setText(mSuffix == null ? t : t.concat(mSuffix));
     if (shouldPersist())
-      persistInt(value);
+    {
+    	try
+    	{
+    		persistInt(value);
+    	}
+    	catch(ClassCastException e)
+    	{
+    	}    	
+    }
     callChangeListener(new Integer(value));
   }
   public void onStartTrackingTouch(SeekBar seek) {}

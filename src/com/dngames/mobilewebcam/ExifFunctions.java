@@ -15,6 +15,7 @@
 
 package com.dngames.mobilewebcam;
 
+import android.graphics.Typeface;
 import android.util.Log;
 
 public class ExifFunctions
@@ -40,4 +41,9 @@ public class ExifFunctions
 		if(mExifAvailable)
 			ExifWrapper.addCoordinates(filename, lat, lon);
 	}
+	
+	public static Typeface createTypefaceFromFile(String path)
+	{
+		return mExifAvailable ? ExifWrapper.createTypefaceFromFile(path) : Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL);
+	}	
 }

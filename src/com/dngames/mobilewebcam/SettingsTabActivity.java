@@ -21,6 +21,7 @@ import com.google.ads.AdView;
 
 import android.app.TabActivity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -76,32 +77,36 @@ public class SettingsTabActivity extends TabActivity
         
 		Log.v("MobileWebCam", "finished settingstabactivity oncreate except for admob");
 
-		final AdView adView = new AdView(this, AdSize.BANNER, "a14d4ff1701dc12");
-
-		tabHost.postDelayed(new Thread(new Runnable() {
-			public void run() {
-				runOnUiThread(new Runnable()
-				{
-					@Override
-					public void run()
+		SharedPreferences prefs = getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
+		if(!prefs.getBoolean("disable_ads", false))
+		{
+			final AdView adView = new AdView(this, AdSize.BANNER, "a14d4ff1701dc12");
+	
+			tabHost.postDelayed(new Thread(new Runnable() {
+				public void run() {
+					runOnUiThread(new Runnable()
 					{
-						Log.v("MobileWebCam", "running admob for tabactivity");
-
-						// Create the adView
-						LinearLayout layout = (LinearLayout)findViewById(R.id.adlayout);
-						// Add the adView to it
-						adView.setGravity(Gravity.CENTER_HORIZONTAL);
-						LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
-						layout.addView(adView, params);
-						// Initiate a generic request to load it with an ad
-						AdRequest request = new AdRequest();
-						request.setTesting(true);
-						adView.loadAd(request);
-						Log.v("MobileWebCam", "admob for tabactivity finished");
-					}
-				}) ;
-			}
-		  }), 100);        
+						@Override
+						public void run()
+						{
+							Log.v("MobileWebCam", "running admob for tabactivity");
+	
+							// Create the adView
+							LinearLayout layout = (LinearLayout)findViewById(R.id.adlayout);
+							// Add the adView to it
+							adView.setGravity(Gravity.CENTER_HORIZONTAL);
+							LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+							layout.addView(adView, params);
+							// Initiate a generic request to load it with an ad
+							AdRequest request = new AdRequest();
+							request.setTesting(true);
+							adView.loadAd(request);
+							Log.v("MobileWebCam", "admob for tabactivity finished");
+						}
+					}) ;
+				}
+			  }), 100);
+		}
     }
     
 	@Override

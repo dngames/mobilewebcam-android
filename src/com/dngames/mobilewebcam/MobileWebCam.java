@@ -33,12 +33,15 @@ import android.hardware.Camera;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.app.AlarmManager;
 import java.util.Calendar;
@@ -65,6 +68,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.Window;
 import android.view.WindowManager;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup.LayoutParams;
@@ -88,6 +92,7 @@ public class MobileWebCam extends CamActivity
     private static final int MENU_SET_WHITEBALANCE = 5;
     private static final int MENU_SET_FLASH = 6;
     private static final int MENU_SETTINGS = 7;
+    private static final int MENU_SHUTDOWN = 8;
 
 	public static int gUploadingCount = 0;
 	public static int gPictureCounter = 0;
@@ -124,6 +129,83 @@ public class MobileWebCam extends CamActivity
     		gCurLogMessage = 0;
     }
     
+	public static String GetLog(Context c, SharedPreferences prefs, PhotoSettings settings)
+	{
+		String info_device = android.os.Build.MODEL + " " + android.os.Build.VERSION.RELEASE + " " + android.os.Build.DISPLAY;		
+
+		String log = "MobileWebCam " + MobileWebCamHttpServer.getVersionNumber(c) + " (" + settings.mImprintText + ") " + info_device + "\r\n\r\n";
+
+		log += "Date and time: " + new Date().toString() + "\r\n";
+
+		log += WorkImage.getBatteryInfo(c, "Battery %d%% %.1f°C") + "\r\n";
+
+		if(settings.mStoreGPS || settings.mImprintGPS)
+		{
+			log += "Latitude: " + String.format("%f", WorkImage.gLatitude) + "\r\n";
+			log += "Longitude: " + String.format("%f", WorkImage.gLongitude) + "\r\n";
+		}
+		
+	    if(prefs.getBoolean("server_enabled", false))
+	    {
+			String myIP = RemoteControlSettings.getIpAddress(c, false);
+			if(myIP != null)
+				log += "Browser access URL: http://" + myIP + ":" + MobileWebCamHttpService.getPort(prefs) + "\r\n";
+	    }
+	    
+	    log += "\r\n";
+	    
+		if(settings.mMode == Mode.MANUAL)
+			log += "Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Manual Mode active" + "\r\n";
+		else
+			log += "Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "\r\n";
+		log += "Orientation: " + Preview.gOrientation + "\r\n";;
+		if(settings.mMode == Mode.MANUAL)
+			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[0];
+		else if(settings.mMode == Mode.NORMAL)
+			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[1];
+		else if(settings.mMode == Mode.BACKGROUND)
+			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[2];
+		else if(settings.mMode == Mode.HIDDEN)
+			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[3];
+		else if(settings.mMode == Mode.BROADCASTRECEIVER)
+			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[4];
+		if(settings.mMotionDetect)
+			log += " detect motion";
+		float usedMegs = (float)Debug.getNativeHeapAllocatedSize() / (float)1048576L;
+		log += String.format("\r\nMemory used: %.2f MB\r\n", usedMegs);
+		log += String.format("Used upload image size: %d x %d (from %d x %d)\r\n", MobileWebCamHttpService.gImageWidth, MobileWebCamHttpService.gImageHeight, MobileWebCamHttpService.gOriginalImageWidth, MobileWebCamHttpService.gOriginalImageHeight);	    
+
+		log += "\r\nActivity:\r\n";
+
+		int cnt = 0;
+		int i = MobileWebCam.gCurLogInfos;
+		while(cnt < MobileWebCam.gLogInfos.length)
+		{
+			if(MobileWebCam.gLogInfos[i] != null)
+				log += MobileWebCam.gLogInfos[i] + "\r\n";
+			i++;
+			if(i >= MobileWebCam.gLogInfos.length)
+				i = 0;
+			cnt++;
+		}
+
+		log += "\r\nErrors:\r\n";
+		
+		cnt = 0;
+		i = MobileWebCam.gCurLogMessage;
+		while(cnt < MobileWebCam.gLogMessages.length)
+		{
+			if(MobileWebCam.gLogMessages[i] != null)
+				log += MobileWebCam.gLogMessages[i] + "\r\n";
+			i++;
+			if(i >= MobileWebCam.gLogMessages.length)
+				i = 0;
+			cnt++;
+		}
+		
+		return log;
+	}    
+    
     private void addMenuItem(Menu menu, int id, String text, int icon, int show)
     {
     	MenuItem item = menu.add(0, id, 0, text);
@@ -154,7 +236,7 @@ public class MobileWebCam extends CamActivity
 				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_share, MenuItem.SHOW_AS_ACTION_ALWAYS);
 		}
 		if(mSettings.mMode == Mode.MANUAL || mSettings.mMode == Mode.NORMAL)
-			addMenuItem(menu, MENU_SHARE_IMAGE, "Share Image", android.R.drawable.ic_menu_gallery, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+			addMenuItem(menu, MENU_SHARE_IMAGE, "Share Image", android.R.drawable.ic_menu_gallery, MenuItem.SHOW_AS_ACTION_ALWAYS);
     	
 		if(NewCameraFunctions.getNumberOfCameras() > 1)
     		addMenuItem(menu, MENU_SET_FRONT_BACK, "Toggle Front/Back Camera", android.R.drawable.ic_menu_camera, MenuItem.SHOW_AS_ACTION_ALWAYS);
@@ -173,6 +255,8 @@ public class MobileWebCam extends CamActivity
     	    		addMenuItem(menu, MENU_SET_FLASH, "Toggle Camera Flashlight", android.R.drawable.ic_dialog_alert, MenuItem.SHOW_AS_ACTION_IF_ROOM);
     		}
     	}
+
+		addMenuItem(menu, MENU_SHUTDOWN, "Shutdown and Close App", android.R.drawable.ic_lock_power_off, MenuItem.SHOW_AS_ACTION_ALWAYS /*MenuItem.SHOW_AS_ACTION_IF_ROOM*/);    	
 
 		return r;
     }
@@ -300,18 +384,47 @@ public class MobileWebCam extends CamActivity
             	Intent settingsIntent = new Intent(getApplicationContext(), SettingsTabActivity.class);
             	startActivity(settingsIntent);
                 return true;
+                
+            case MENU_SHUTDOWN:
+            	MobileWebCamHttpService.stop(MobileWebCam.this);
+            	ControlReceiver.Stop(MobileWebCam.this, mPrefs);
+            	finish();
+            	return true;
         }
 
         return false;
     }
-
+    
     @Override
 	protected void onCreate(Bundle savedInstanceState)
     {
+        mPrefs = getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
+        if(mPrefs.getBoolean("fullscreen", false))
+        {
+	        requestWindowFeature(Window.FEATURE_NO_TITLE);
+	        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+	        mLayout = R.layout.layout_fullscreen;
+        }
+        
         super.onCreate(savedInstanceState);
         
 		mPrefs.registerOnSharedPreferenceChangeListener(this);            
         onSharedPreferenceChanged(mPrefs, null);
+        
+//***        if(DEBUG_MOTIONDETECT)
+        {
+        	mDrawOnTop = (DrawOnTop)findViewById(R.id.drawontop);
+        }
+		
+		mTextView = (TextView)findViewById(R.id.status);
+		mCamNameView = (TextView)findViewById(R.id.camname);
+		mMotionTextView = (TextView)findViewById(R.id.motion);
+		
+		mMotionTextView.setVisibility(View.INVISIBLE);
+		mTextViewFrame = (LinearLayout)findViewById(R.id.statusframe);
+		mCamNameViewFrame = (RelativeLayout)findViewById(R.id.ipaddrframe);
+		mCamNameViewFrame.setBackgroundColor(mSettings.mTextBackgroundColor);
+		mTextViewFrame.setBackgroundColor(mSettings.mDateTimeBackgroundColor);                
         
 /*        try
         {
@@ -340,12 +453,31 @@ public class MobileWebCam extends CamActivity
  			}
  		});        
         
-	    if(mPrefs.getBoolean("server_enabled", true))
-	    {
-			String myIP = RemoteControlSettings.getLocalIpAddress(MobileWebCam.this);
-			if(myIP != null)
-				setTitle(getTitle() + " http://" + myIP + ":" + MobileWebCamHttpService.getPort(mPrefs));
-	    }        
+		TextView camname = (TextView)findViewById(R.id.camname);
+		if(camname != null)
+		{
+			String info = mPrefs.getString("imprint_text", "mobilewebcam");
+			if(info == "mobilewebcam")
+				camname.setText("");
+			else
+				camname.setText(info);
+		}
+
+		TextView iptext = (TextView)findViewById(R.id.ipaddr);
+		if(iptext != null)
+		{
+		    if(mPrefs.getBoolean("server_enabled", true))
+		    {
+		    	
+				String myIP = RemoteControlSettings.getIpAddress(MobileWebCam.this, true);
+				if(myIP != null)
+					iptext.setText("http://" + myIP + ":" + MobileWebCamHttpService.getPort(mPrefs));
+				else
+					iptext.setText("");
+		    }        
+			else
+				iptext.setText("");
+		}
         
         MobileWebCamHttpService.start(MobileWebCam.this);
     }
@@ -439,107 +571,113 @@ public class MobileWebCam extends CamActivity
 	
     public void onSharedPreferenceChanged(SharedPreferences prefs, String key)
 	{
-        String v = prefs.getString("camera_mode", "1");
-        if(v.length() < 1 || v.length() > 9)
-        	v = "1";
-        switch(Integer.parseInt(v))
-		{
-		case 0:
-			mSettings.mMode = Mode.MANUAL;
-
+    	if(key == null || key.equals("camera_mode"))
+    	{
+	        String v = prefs.getString("camera_mode", "1");
+	        if(v.length() < 1 || v.length() > 9)
+	        	v = "1";
+	        switch(Integer.parseInt(v))
 			{
-				AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-				Intent intent = new Intent(this, PhotoAlarmReceiver.class);
-				PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
-				alarmMgr.cancel(pendingIntent);
-				PhotoAlarmReceiver.StopNotification(MobileWebCam.this);
+			case 0:
+				mSettings.mMode = Mode.MANUAL;
+	
+				{
+					AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+					Intent intent = new Intent(this, PhotoAlarmReceiver.class);
+					PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+					alarmMgr.cancel(pendingIntent);
+					PhotoAlarmReceiver.StopNotification(MobileWebCam.this);
+				}
+				
+				if(mPreview != null)
+					mPreview.setVisibility(View.VISIBLE);
+				if(mDrawOnTop != null)
+					mDrawOnTop.setVisibility(View.INVISIBLE);
+				break;
+			case 2:
+				mSettings.mMode = Mode.HIDDEN;
+	
+				{
+					AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+					Intent intent = new Intent(this, PhotoAlarmReceiver.class);
+					PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+					alarmMgr.cancel(pendingIntent);
+					Calendar time = Calendar.getInstance();
+					time.setTimeInMillis(System.currentTimeMillis());
+					alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
+				}
+	
+				if(mPreview != null)
+					mPreview.setVisibility(View.INVISIBLE);
+				if(mDrawOnTop != null)
+					mDrawOnTop.setVisibility(View.VISIBLE);
+	
+				if(key != null)// && key.equals("camera_mode"))
+					finish();
+				break;
+			case 3:
+				mSettings.mMode = Mode.BACKGROUND;
+				
+				{
+					AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+					Intent intent = new Intent(this, PhotoAlarmReceiver.class);
+					PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+					alarmMgr.cancel(pendingIntent);
+					Calendar time = Calendar.getInstance();
+					time.setTimeInMillis(System.currentTimeMillis());
+					alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
+				}
+	
+				if(mPreview != null)
+					mPreview.setVisibility(View.VISIBLE);
+				if(mDrawOnTop != null)
+					mDrawOnTop.setVisibility(View.INVISIBLE);
+				
+				if(key != null)// && key.equals("camera_mode"))
+					finish();
+				break;
+			case 4:
+				mSettings.mMode = Mode.BROADCASTRECEIVER;
+	
+				CustomReceiverService.start(MobileWebCam.this);
+				
+				if(mPreview != null)
+					mPreview.setVisibility(View.VISIBLE);
+				if(mDrawOnTop != null)
+					mDrawOnTop.setVisibility(View.INVISIBLE);
+				
+				if(key != null)// && key.equals("camera_mode"))
+					finish();
+				break;
+			case 1:
+			default:
+				mSettings.mMode = Mode.NORMAL;
+	
+				{
+					AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+					Intent intent = new Intent(this, PhotoAlarmReceiver.class);
+					PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+					alarmMgr.cancel(pendingIntent);
+					PhotoAlarmReceiver.StopNotification(MobileWebCam.this);
+				}
+	
+				if(mPreview != null)
+					mPreview.setVisibility(View.VISIBLE);
+				if(mDrawOnTop != null)
+					mDrawOnTop.setVisibility(View.INVISIBLE);
+				break;
 			}
-			
-			if(mPreview != null)
-				mPreview.setVisibility(View.VISIBLE);
-			if(mDrawOnTop != null)
-				mDrawOnTop.setVisibility(View.INVISIBLE);
-			break;
-		case 2:
-			mSettings.mMode = Mode.HIDDEN;
-
+	
+			gLastMotionTime = System.currentTimeMillis(); // no immediate detect
+	        
+			if(mMotionTextView != null)
 			{
-				AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-				Intent intent = new Intent(this, PhotoAlarmReceiver.class);
-				PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
-				alarmMgr.cancel(pendingIntent);
-				Calendar time = Calendar.getInstance();
-				time.setTimeInMillis(System.currentTimeMillis());
-				alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
+				if(mSettings.mMotionDetect && DEBUG_MOTIONDETECT)
+					mMotionTextView.setVisibility(View.VISIBLE);            		
+				else
+					mMotionTextView.setVisibility(View.INVISIBLE);
 			}
-
-			if(mPreview != null)
-				mPreview.setVisibility(View.INVISIBLE);
-			if(mDrawOnTop != null)
-				mDrawOnTop.setVisibility(View.VISIBLE);
-
-			if(key != null && key.equals("camera_mode"))
-				finish();
-			break;
-		case 3:
-			mSettings.mMode = Mode.BACKGROUND;
-			
-			{
-				AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-				Intent intent = new Intent(this, PhotoAlarmReceiver.class);
-				PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
-				alarmMgr.cancel(pendingIntent);
-				Calendar time = Calendar.getInstance();
-				time.setTimeInMillis(System.currentTimeMillis());
-				alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
-			}
-
-			if(mPreview != null)
-				mPreview.setVisibility(View.VISIBLE);
-			if(mDrawOnTop != null)
-				mDrawOnTop.setVisibility(View.INVISIBLE);
-			
-			if(key != null && key.equals("camera_mode"))
-				finish();
-			break;
-		case 4:
-			mSettings.mMode = Mode.BROADCASTRECEIVER;
-
-			CustomReceiverService.start(MobileWebCam.this);
-			
-			if(mPreview != null)
-				mPreview.setVisibility(View.VISIBLE);
-			if(mDrawOnTop != null)
-				mDrawOnTop.setVisibility(View.INVISIBLE);
-			
-			if(key != null && key.equals("camera_mode"))
-				finish();
-			break;
-		case 1:
-		default:
-			mSettings.mMode = Mode.NORMAL;
-
-			{
-				AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-				Intent intent = new Intent(this, PhotoAlarmReceiver.class);
-				PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
-				alarmMgr.cancel(pendingIntent);
-				PhotoAlarmReceiver.StopNotification(MobileWebCam.this);
-			}
-
-			if(mPreview != null)
-				mPreview.setVisibility(View.VISIBLE);
-			if(mDrawOnTop != null)
-				mDrawOnTop.setVisibility(View.INVISIBLE);
-			break;
-		}
-
-		gLastMotionTime = System.currentTimeMillis(); // no immediate detect
-        
-		if(mSettings.mMotionDetect && DEBUG_MOTIONDETECT)
-			mMotionTextView.setVisibility(View.VISIBLE);            		
-		else
-			mMotionTextView.setVisibility(View.INVISIBLE);
+    	}
     }
 
 /*	 public static void setCameraDisplayOrientation(Activity activity, int cameraId, android.hardware.Camera camera)

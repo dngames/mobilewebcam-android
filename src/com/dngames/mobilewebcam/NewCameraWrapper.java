@@ -55,11 +55,11 @@ public class NewCameraWrapper
 		}
 		catch(NoSuchMethodError e)
 		{
-			MobileWebCam.LogE("Unable to get CameraInfo: " + e.getMessage());
+			Log.e("MobileWebCam", "Unable to get CameraInfo: " + e.getMessage());
 		}
 		catch(NoClassDefFoundError e)
 		{
-			MobileWebCam.LogE("Unable to get CameraInfo: " + e.getMessage());
+			Log.e("MobileWebCam", "Unable to get CameraInfo: " + e.getMessage());
 		}
 	    
 	    return false;
@@ -94,7 +94,7 @@ public class NewCameraWrapper
 		}
 		catch(NoClassDefFoundError e)
 		{
-			MobileWebCam.LogE("Unable to get CameraInfo: " + e.getMessage());
+			Log.e("MobileWebCam", "Unable to get CameraInfo: " + e.getMessage());
 		}
 	    
 	    return null;

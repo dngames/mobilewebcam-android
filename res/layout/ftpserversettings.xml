@@ -56,7 +56,7 @@
             android:scrollHorizontally="true"
             android:singleLine="true"
 	            />
-		
+	  
 	</PreferenceCategory>
 		
 	<PreferenceCategory
@@ -117,7 +117,36 @@
 			android:title="Passive Mode"
 			android:summary="Use passive ftp mode."
 			android:defaultValue="true"
-			/>	            
+			/>
+	
+	</PreferenceCategory>
+	
+	<PreferenceCategory
+		android:title="FTP Activity">
+					
+		<CheckBoxPreference
+			android:key="ftp_keep_open"
+			android:title="Keep connection"
+			android:summary="Keep ftp connection opened. Faster upload with fast refresh times."
+			android:defaultValue="false"
+			/>		
+
+		<CheckBoxPreference
+			android:key="ftp_batchalways"
+			android:title="Reliable upload"
+			android:summary="Upload pictures when data connection available. Otherwise only most recent picture will be uploaded if possible. Requires numbered/date upload."
+			android:defaultValue="false"
+			/>		
+							
+	  <EditTextPreference
+            android:key="ftp_batchupload"
+            android:title="Batch upload"
+            android:summary="Specify the number of pictures to take and store before uploading all at once. With spotty data connection same as Upload when connected setting. Requires numbered/date upload."
+            android:defaultValue="1"
+            android:inputType="number"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+	            />		
 	            
 	</PreferenceCategory>
 

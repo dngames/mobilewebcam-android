@@ -18,16 +18,25 @@
   <PreferenceCategory
 		android:title="Remote Configuration">
 	    
-	    <EditTextPreference
+	<EditTextPreference
         android:key="remote_config_url"
         android:title="Control Website"
-        android:summary="Website URL to read configuration value text from. Config format: see dump"
+        android:summary="Website URL to read configuration value text from. Config format: see dump. No entry here means no config read!"
         android:hint="http://www.YOURDOMAIN.COM/config.txt"
         android:inputType="textUri"
         android:scrollHorizontally="true"
         android:singleLine="true"/>
-      
+	
   <EditTextPreference
+          android:key="remote_config_every"
+          android:title="Frequency"
+          android:summary="Skip config get. 1 = get every picture"
+          android:defaultValue="1"
+          android:inputType="number"
+          android:singleLine="true"
+	            />	
+      
+  	<EditTextPreference
             android:key="remote_config_login"
             android:title="Login"
             android:summary="Your login to your remote control server."
@@ -38,7 +47,7 @@
             android:singleLine="true"
 	            />
 
-  <EditTextPreference
+  	<EditTextPreference
             android:key="remote_config_password"
             android:title="Password"
             android:summary="Your password."
@@ -51,10 +60,16 @@
 
     	<PreferenceScreen
 		    android:key="dump_config"
-			android:title="Show Config"
-			android:summary="Dump current config and share. You could use my app AutoShare to update Server."
+			android:title="Current Config"
+			android:summary="Dump current device config and share to view or upload to server (for example with my app 'AutoShare')."
 			/>
-      
+
+    	<PreferenceScreen
+		    android:key="show_configphp"
+			android:title="Show Config PHP"
+			android:summary="See an example PHP script to put on your server for easy remote configuration via config.txt."
+			/>
+    		
   </PreferenceCategory>
       
   <PreferenceCategory

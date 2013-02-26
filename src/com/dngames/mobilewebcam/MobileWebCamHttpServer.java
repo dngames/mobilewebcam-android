@@ -17,6 +17,7 @@ package com.dngames.mobilewebcam;
 
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 
 import android.content.Context;
 import android.content.Intent;
@@ -29,8 +30,13 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import java.io.ByteArrayInputStream;
+import java.lang.reflect.Field;
 
+import com.dngames.mobilewebcam.PhotoSettings.BooleanPref;
+import com.dngames.mobilewebcam.PhotoSettings.EditIntPref;
+import com.dngames.mobilewebcam.PhotoSettings.IntPref;
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
+import com.dngames.mobilewebcam.PhotoSettings.StringPref;
 
 /**
  * An example of subclassing NanoHTTPD to make a custom HTTP server.
@@ -109,17 +115,51 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 		{
 			SharedPreferences prefs = mContext.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
 			SharedPreferences.Editor edit = prefs.edit();
-			String refresh = parms.getProperty("refresh", mSettings.mRefreshDuration / 1000 + "");
-			edit.putString("cam_refresh", refresh);
-			edit.putBoolean("server_upload", parms.getProperty("http") != null);
-			edit.putBoolean("ftpserver_upload", parms.getProperty("ftp") != null);
-			edit.putBoolean("cam_storepictures", parms.getProperty("sdcard") != null);
-			edit.putBoolean("cam_mailphoto", parms.getProperty("mail") != null);
-			edit.putBoolean("dropbox_upload", parms.getProperty("dropbox") != null);
-	    	String start = parms.getProperty("starttime", mSettings.mStartTime);
-			edit.putString("activity_starttime", start);
-			String end = parms.getProperty("endtime", mSettings.mEndTime);
-			edit.putString("activity_endtime", end);
+			try
+			{
+				for(Field f : PhotoSettings.class.getFields())
+				{
+					{
+						BooleanPref bp = f.getAnnotation(BooleanPref.class);
+						if(bp != null)
+						{
+							boolean value = parms.getProperty(bp.key()) != null;
+							edit.putBoolean(bp.key(), value);
+						}
+					}
+					{
+						StringPref sp = f.getAnnotation(StringPref.class);
+						if(sp != null)
+						{
+							String val = (String)f.get(mSettings);
+							String value = parms.getProperty(sp.key(), val);
+							edit.putString(sp.key(), value);
+						}
+					}
+					{
+						EditIntPref ip = f.getAnnotation(EditIntPref.class);
+						if(ip != null)
+						{
+							int val = f.getInt(mSettings);
+							String value = parms.getProperty(ip.key(), val / ip.factor() + "");
+							edit.putString(ip.key(), value);
+						}
+					}
+					{
+						IntPref ip = f.getAnnotation(IntPref.class);
+						if(ip != null)
+						{
+							int val = f.getInt(mSettings);
+							String value = parms.getProperty(ip.key(), val / ip.factor() + "");
+							edit.putInt(ip.key(), Integer.parseInt(value));
+						}
+					}
+				}			
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+			}
 			edit.commit();
 
 			Response res = new NanoHTTPD.Response(NanoHTTPD.HTTP_OTHER, NanoHTTPD.MIME_HTML, "<html><body>Redirected: <a href='/'>" + "/" + "</a></body></html>");
@@ -147,7 +187,7 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			msg += "Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Manual Mode active" + "<br>";
 		else
 			msg += "Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "<br>";
-		msg += WorkImage.getBatteryInfo(mContext, mSettings.mImprintStatusInfo) + "<br>";
+		msg += WorkImage.getBatteryInfo(mContext, "Battery %d%% %.1f°C") + "<br>";
 		msg += "Orientation: " + Preview.gOrientation + "<br>";;
 		if(mSettings.mMode == Mode.MANUAL)
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[0];
@@ -181,6 +221,87 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 		}
 		
 		msg += "<p><form action='set' enctype='multipart/form-data' method='post'>";
+
+		Map<String, List<String>> settings = new TreeMap<String, List<String>>();
+		try
+		{
+			for(Field f : PhotoSettings.class.getFields())
+			{
+				{
+					BooleanPref bp = f.getAnnotation(BooleanPref.class);
+					if(bp != null && bp.help().length() > 0)
+					{
+						boolean val = f.getBoolean(mSettings);
+						List<String> entries = settings.containsKey(bp.category()) ? settings.get(bp.category()) : new ArrayList<String>();
+						entries.add("<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='" + bp.key() + "' " + (val ? "checked='checked'" : "") + "> " + bp.help() + "<br>");
+						settings.put(bp.category(), entries);
+					}
+				}
+				{
+					StringPref sp = f.getAnnotation(StringPref.class);
+					if(sp != null && sp.help().length() > 0)
+					{
+						String val = (String)f.get(mSettings);
+						List<String> entries = settings.containsKey(sp.category()) ? settings.get(sp.category()) : new ArrayList<String>();
+						entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + sp.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + sp.key() + "' value='" + val + "' type='" + sp.htmltype() + "'><br>");
+						settings.put(sp.category(), entries);
+					}
+				}
+				{
+					EditIntPref ip = f.getAnnotation(EditIntPref.class);
+					if(ip != null && ip.help().length() > 0)
+					{
+						List<String> entries = settings.containsKey(ip.category()) ? settings.get(ip.category()) : new ArrayList<String>();
+						if(ip.select().length() > 0)
+						{
+							String val = f.getInt(mSettings) + "";
+							String select = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <select style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "'>";
+							String[] sels = ip.select().split(",");
+							for(String s : sels)
+							{
+								String[] option = s.split("=");
+								String v = option[0].trim();
+								select += "<option value='" + v + "'" + (val.equals(v) ? " selected" : "") + ">" + option[1].trim() + "</option>";
+							}
+							select += "</select><br>";
+							entries.add(select);
+						}
+						else
+						{
+							int val = f.getInt(mSettings);
+							entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "' value='" + val / ip.factor() + "' type='text'><br>");
+						}
+						settings.put(ip.category(), entries);
+					}
+				}
+				{
+					IntPref ip = f.getAnnotation(IntPref.class);
+					if(ip != null && ip.help().length() > 0)
+					{
+						List<String> entries = settings.containsKey(ip.category()) ? settings.get(ip.category()) : new ArrayList<String>();
+						int val = f.getInt(mSettings);
+						entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "' value='" + val / ip.factor() + "' type='text'><br>");
+						settings.put(ip.category(), entries);
+					}
+				}
+			}
+		}			
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		
+		for(String category : settings.keySet())
+		{
+			msg += "<p>" + category + ":<br>";
+			List<String> keys = new ArrayList<String>(settings.get(category));
+			Collections.sort(keys);
+			for(String key : keys)
+				msg += key;
+			msg += "</p>";
+		}
+		
+/*		
 		msg += "Upload:<br>";
 		msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='http' " + (mSettings.mUploadPictures ? "checked='checked'" : "") + "> http website post<br>";
 		msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='ftp' " + (mSettings.mFTPPictures ? "checked='checked'" : "") + "> upload to ftp<br>";
@@ -193,12 +314,15 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 	    msg += "<p>Activity Start Time: <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='starttime' value='" + mSettings.mStartTime + "' type='time'><br>";
 	    msg += "Activity End Time: <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='endtime' value='" + mSettings.mEndTime + "' type='time'></p>";
 
+	    msg += "<p><input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='night_detect' " + (mSettings.mNightDetect ? "checked='checked'" : "") + "> Do not upload dark/night pictures.</p>";
+	    */
+
 	    msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' value='Set' type='submit'>";
 	    msg += "</form><p>";
 	    
 	    msg += "<hr>";
 		
-		msg += "<p>MJPEG motion picture URL is:<br><a href=\'/mjpeg\'>http://" + RemoteControlSettings.getLocalIpAddress(mContext) + "/mjpeg</a></p>";
+		msg += "<p>MJPEG motion picture URL is:<br><a href=\'/mjpeg\'>http://" + RemoteControlSettings.getIpAddress(mContext, true) + "/mjpeg</a></p>";
 		msg += "<p>To use your phone with Skype or other programs on your PC you need to install a mjpeg webcam driver like this one: <a href='http://www.webcamxp.com/download.aspx'>http://www.webcamxp.com/download.aspx</a> - then you enter the URL shown above there.</p>";		
 		
 		msg += "</td><td>";

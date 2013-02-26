@@ -156,52 +156,36 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
            
 			}
 			
-			if(!mPhotoLock.getAndSet(true))
+			if(!mSettings.mLowBatteryPause || WorkImage.getBatteryLevel(mActivity) >= 15)
 			{
-				mPhotoLockTime = System.currentTimeMillis();
-				if((mSettings.mMode == Mode.MANUAL && MobileWebCam.gUploadingCount < 3) || (mSettings.mMode != Mode.MANUAL && MobileWebCam.gUploadingCount <= 6)) // wait if too slow
+				if(!mPhotoLock.getAndSet(true))
 				{
-					Log.i("MobileWebCam", "mPostPicture.run.tryOpenCam");
-					
-					tryOpenCam();
-					
-					if(mCamera != null)
+					mPhotoLockTime = System.currentTimeMillis();
+					if((mSettings.mMode == Mode.MANUAL && MobileWebCam.gUploadingCount < 3) || (mSettings.mMode != Mode.MANUAL && MobileWebCam.gUploadingCount <= 6)) // wait if too slow
 					{
-						Log.i("MobileWebCam", "mPostPicture.run mCamera");
+						Log.i("MobileWebCam", "mPostPicture.run.tryOpenCam");
 						
-						if(!mSettings.mURL.equals(mSettings.mDefaulturl) || (mSettings.mFTPPictures && !mSettings.mFTP.equals(mSettings.mDefaultFTPurl)) || mSettings.mMailPictures || mSettings.mStorePictures || mSettings.mDropboxPictures)
+						tryOpenCam();
+						
+						if(mCamera != null)
 						{
-							boolean ignoreinactivity = false; 
-							long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
-							if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh)
-							{
-								MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
-								MobileWebCam.LogI("Taking keep alive picture!");
-								ignoreinactivity = true;
-							}
+							Log.i("MobileWebCam", "mPostPicture.run mCamera");
 							
-							Date date = new Date();
-							String[] time = mSettings.mStartTime.split(":");
-							int h = 0;
-							int m = 0;
-							try
+							if(!mSettings.mURL.equals(mSettings.mDefaulturl) || (mSettings.mFTPPictures && !mSettings.mFTP.equals(mSettings.mDefaultFTPurl)) || mSettings.mMailPictures || mSettings.mStorePictures || mSettings.mDropboxPictures)
 							{
-								if(time.length > 0)
-									h = Integer.parseInt(time[0]);
-								if(time.length > 1)
-									m = Integer.parseInt(time[1]);
-							}
-							catch(NumberFormatException e)
-							{
-								MobileWebCam.LogE("Invalid activity start time format!");
-							}
-							int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
-							int check_dayminutes = h * 60 + m; 
-							if(cur_dayminutes >= check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
-							{
-								time = mSettings.mEndTime.split(":");
-								h = 24;
-								m = 0;
+								boolean ignoreinactivity = false; 
+								long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
+								if(mSettings.mMotionDetectKeepAliveRefresh > 0 && sincelastalive >= mSettings.mMotionDetectKeepAliveRefresh)
+								{
+									MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+									MobileWebCam.LogI("Taking keep alive picture!");
+									ignoreinactivity = true;
+								}
+								
+								Date date = new Date();
+								String[] time = mSettings.mStartTime.split(":");
+								int h = 0;
+								int m = 0;
 								try
 								{
 									if(time.length > 0)
@@ -211,139 +195,175 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 								}
 								catch(NumberFormatException e)
 								{
-									MobileWebCam.LogE("Invalid activity end time format!");
+									MobileWebCam.LogE("Invalid activity start time format!");
 								}
-								check_dayminutes = h * 60 + m; 
-								if(cur_dayminutes < check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
+								int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
+								int check_dayminutes = h * 60 + m; 
+								if(cur_dayminutes >= check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
 								{
-									Log.i("MobileWebCam", "mPostPicture.try");
-									if(!mSettings.mShutterSound)
-									{
-										AudioManager mgr = (AudioManager)mActivity.getSystemService(Context.AUDIO_SERVICE);
-										mgr.setStreamMute(AudioManager.STREAM_SYSTEM, true);
-									}
+									time = mSettings.mEndTime.split(":");
+									h = 24;
+									m = 0;
 									try
 									{
-										Log.i("MobileWebCam", "mPostPicture.ok");
-										mCamera.setPreviewCallback(null);
-										
-										Camera.Parameters params = mCamera.getParameters();
-										if(params != null)
+										if(time.length > 0)
+											h = Integer.parseInt(time[0]);
+										if(time.length > 1)
+											m = Integer.parseInt(time[1]);
+									}
+									catch(NumberFormatException e)
+									{
+										MobileWebCam.LogE("Invalid activity end time format!");
+									}
+									check_dayminutes = h * 60 + m; 
+									if(cur_dayminutes < check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
+									{
+										Log.i("MobileWebCam", "mPostPicture.try");
+										if(!mSettings.mShutterSound)
 										{
-											if(mSettings.mImageSize == 4 || mSettings.mImageSize == 5)
+											AudioManager mgr = (AudioManager)mActivity.getSystemService(Context.AUDIO_SERVICE);
+											mgr.setStreamMute(AudioManager.STREAM_SYSTEM, true);
+										}
+										try
+										{
+											Log.i("MobileWebCam", "mPostPicture.ok");
+											mCamera.setPreviewCallback(null);
+											
+											Camera.Parameters params = mCamera.getParameters();
+											if(params != null)
 											{
-								        		List<Camera.Size> sizes = NewCameraFunctions.getSupportedPictureSizes(params);
-								        		if(sizes != null)
-								        		{
-								        			params.setPictureSize(sizes.get(0).width, sizes.get(0).height);
-								        			if(mSettings.mImageSize == 5)
-								        			{
-								        				// find best matching size (next larger)
-								        				for(int i = sizes.size() - 1; i >= 0; i--)
-								        				{
-								        					Camera.Size s = sizes.get(i);
-								        					if(s.width >= mSettings.mCustomImageW && s.height >= mSettings.mCustomImageH)
-								        					{
-									        					params.setPictureSize(s.width, s.height);
-									        					break;
-								        					}
-								        				}
-								        			}
-									        		mCamera.setParameters(params);
-								        		}
+												if(mSettings.mImageSize == 4 || mSettings.mImageSize == 5)
+												{
+									        		List<Camera.Size> sizes = NewCameraFunctions.getSupportedPictureSizes(params);
+									        		if(sizes != null)
+									        		{
+									        			params.setPictureSize(sizes.get(0).width, sizes.get(0).height);
+									        			if(mSettings.mImageSize == 5)
+									        			{
+									        				// find best matching size (next larger)
+									        				for(int i = sizes.size() - 1; i >= 0; i--)
+									        				{
+									        					Camera.Size s = sizes.get(i);
+									        					if(s.width >= mSettings.mCustomImageW && s.height >= mSettings.mCustomImageH)
+									        					{
+										        					params.setPictureSize(s.width, s.height);
+										        					break;
+									        					}
+									        				}
+									        			}
+										        		mCamera.setParameters(params);
+									        		}
+												}
+												
+												if(NewCameraFunctions.isZoomSupported(params))
+													NewCameraFunctions.setZoom(params, mSettings.mZoom);
+												if(NewCameraFunctions.getSupportedWhiteBalance(params) != null)
+													NewCameraFunctions.setWhiteBalance(params, mSettings.mWhiteBalance);
+												if(NewCameraFunctions.isFlashSupported(params))
+													NewCameraFunctions.setFlash(params, mSettings.mCameraFlash ? Camera.Parameters.FLASH_MODE_ON : Camera.Parameters.FLASH_MODE_OFF);											
+												try
+												{
+													mCamera.setParameters(params);
+												}
+												catch(RuntimeException e)
+												{
+													e.printStackTrace();
+												}
 											}
 											
-											if(NewCameraFunctions.isZoomSupported(params))
-												NewCameraFunctions.setZoom(params, mSettings.mZoom);
-											if(NewCameraFunctions.getSupportedWhiteBalance(params) != null)
-												NewCameraFunctions.setWhiteBalance(params, mSettings.mWhiteBalance);
-											if(NewCameraFunctions.isFlashSupported(params))
-												NewCameraFunctions.setFlash(params, mSettings.mCameraFlash ? Camera.Parameters.FLASH_MODE_ON : Camera.Parameters.FLASH_MODE_OFF);											
-											try
-											{
-												mCamera.setParameters(params);
-											}
-											catch(RuntimeException e)
-											{
-												e.printStackTrace();
-											}
+											MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();										
+											
+											if(mSettings.mAutoFocus)
+												mCamera.autoFocus(autofocusCallback);
+											else
+												mCamera.takePicture(shutterCallback, null, photoCallback);
 										}
-										
-										MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();										
-										
-										if(mSettings.mAutoFocus)
-											mCamera.autoFocus(autofocusCallback);
-										else
-											mCamera.takePicture(shutterCallback, null, photoCallback);
+										catch(RuntimeException e)
+										{
+											e.printStackTrace();
+		/*									if(e.getMessage() != null)
+												Toast.makeText(mActivity, "takePicture\n" + e.getMessage(), Toast.LENGTH_SHORT).show();
+											else
+												Toast.makeText(mActivity, "Android camera error:\ntakePicture failed!", Toast.LENGTH_SHORT).show();*/
+										}
 									}
-									catch(RuntimeException e)
+									else
 									{
-										e.printStackTrace();
-	/*									if(e.getMessage() != null)
-											Toast.makeText(mActivity, "takePicture\n" + e.getMessage(), Toast.LENGTH_SHORT).show();
-										else
-											Toast.makeText(mActivity, "Android camera error:\ntakePicture failed!", Toast.LENGTH_SHORT).show();*/
+										// no time
+										mPhotoLock.set(false);
+										Log.v("MobileWebCam", "No active time! PhotoLock released!");
+										if(mSettings.mMode == Mode.MANUAL)
+											MobileWebCam.LogI("No active time!");
+	
+										JobFinished();
 									}
 								}
 								else
 								{
 									// no time
 									mPhotoLock.set(false);
-									Log.v("MobileWebCam", "PhotoLock released!");
-
+									Log.v("MobileWebCam", "No active time! PhotoLock released!");
+									if(mSettings.mMode == Mode.MANUAL)
+										MobileWebCam.LogI("No active time!");
+	
 									JobFinished();
 								}
 							}
 							else
 							{
-								// no time
-								mPhotoLock.set(false);
-								Log.v("MobileWebCam", "PhotoLock released!");
-
+								if(System.currentTimeMillis() - mSetupServerMessage_lasttime > 10000)
+								{
+									Toast.makeText(mActivity, "Setup your server or email or local store!\n\nSettings: MENU", Toast.LENGTH_LONG).show();
+									mSetupServerMessage_lasttime = System.currentTimeMillis();
+								}
+								MobileWebCam.LogE("Setup your server or email or local store!");
 								JobFinished();
+							}
+	
+							if(mSettings.mMode != Mode.MANUAL)
+							{
+								int slowdown = Math.max(0, MobileWebCam.gUploadingCount * MobileWebCam.gUploadingCount - 1) * 1000;
+								int time = mSettings.mRefreshDuration + slowdown;
+								if(!mSettings.mMotionDetect || (System.currentTimeMillis() - MobileWebCam.gLastMotionTime < time))
+								{
+									mHandler.removeCallbacks(mPostPicture);
+									mHandler.postDelayed(mPostPicture, time);
+								}
+								else if(mSettings.mMotionDetect)
+								{
+									if(mActivity.mMotionTextView != null)
+										mActivity.mMotionTextView.setText("No motion detected!");
+								}
 							}
 						}
 						else
 						{
-							if(System.currentTimeMillis() - mSetupServerMessage_lasttime > 10000)
-							{
-								Toast.makeText(mActivity, "Setup your server or email or local store!\n\nSettings: MENU", Toast.LENGTH_LONG).show();
-								mSetupServerMessage_lasttime = System.currentTimeMillis();
-							}
-							JobFinished();
-						}
-
-						if(mSettings.mMode != Mode.MANUAL)
-						{
-							int slowdown = Math.max(0, MobileWebCam.gUploadingCount * MobileWebCam.gUploadingCount - 1) * 1000;
-							int time = mSettings.mRefreshDuration + slowdown;
-							if(!mSettings.mMotionDetect || (System.currentTimeMillis() - MobileWebCam.gLastMotionTime < time))
-							{
-								mHandler.removeCallbacks(mPostPicture);
-								mHandler.postDelayed(mPostPicture, time);
-							}
-							else if(mSettings.mMotionDetect)
-							{
-								mActivity.mMotionTextView.setText("No motion detected!");
-							}
+							// no camera
+							mPhotoLock.set(false);
+							MobileWebCam.LogE("No cam! PhotoLock released!");
+	
+			    			JobFinished();						
 						}
 					}
-					else
+					else// if(mSettings.mMode != Mode.MANUAL)
 					{
-						// no camera
+						Log.i("MobileWebCam", "mPostPicture try soon");
+						
 						mPhotoLock.set(false);
 						Log.v("MobileWebCam", "PhotoLock released!");
-
-		    			JobFinished();						
+	
+						// try again soon
+						mHandler.removeCallbacks(mPostPicture);
+						mHandler.postDelayed(mPostPicture, Math.min(Math.max(mSettings.mRefreshDuration, 1), 5000));
 					}
 				}
-				else// if(mSettings.mMode != Mode.MANUAL)
+				else
 				{
-					Log.i("MobileWebCam", "mPostPicture try soon");
+					Log.w("MobileWebCam", "Photo locked!");
 					
 					mPhotoLock.set(false);
 					Log.v("MobileWebCam", "PhotoLock released!");
-
+	
 					// try again soon
 					mHandler.removeCallbacks(mPostPicture);
 					mHandler.postDelayed(mPostPicture, Math.min(Math.max(mSettings.mRefreshDuration, 1), 5000));
@@ -351,14 +371,11 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			}
 			else
 			{
-				Log.w("MobileWebCam", "Photo locked!");
-				
-				mPhotoLock.set(false);
-				Log.v("MobileWebCam", "PhotoLock released!");
-
-				// try again soon
+				// no battery power
+				MobileWebCam.LogI("Battery low ... pause");
+				// try again next picture time
 				mHandler.removeCallbacks(mPostPicture);
-				mHandler.postDelayed(mPostPicture, Math.min(Math.max(mSettings.mRefreshDuration, 1), 5000));
+				mHandler.postDelayed(mPostPicture, mSettings.mRefreshDuration);
 			}
 		};
 	};
@@ -521,29 +538,36 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 				
 				if(mCamera == null)
 				{
+					Log.i("MobileWebCam", "Camera.open()");
 					mCamera = Camera.open();
 				}
 				if(mCamera != null)
 				{
-					mCamera.setErrorCallback(new Camera.ErrorCallback() {
-
+					Log.i("MobileWebCam", "mCamera.setErrorCallback()");
+					mCamera.setErrorCallback(new Camera.ErrorCallback()
+					{
 						@Override
-						public void onError(int error, Camera camera) {
-							MobileWebCam.LogE("Camera error: " + error);
-							if(mCamera != null)
+						public void onError(int error, Camera camera)
+						{
+							if(error != 0) // Samsung Galaxy S returns 0? https://groups.google.com/forum/?fromgroups=#!topic/android-developers/ZePJqveaExk
 							{
-								mCamera = null;
-								camera.setPreviewCallback(null);
-								camera.stopPreview();
-								camera.release();
+								MobileWebCam.LogE("Camera error: " + error);
+								if(mCamera != null)
+								{
+									mCamera = null;
+									camera.setPreviewCallback(null);
+									camera.stopPreview();
+									camera.release();
+									
+									System.gc();
+								}
 								
-								System.gc();
+								mPhotoLock.set(false);
+								Log.v("MobileWebCam", "PhotoLock released!");
+								JobFinished();
 							}
-							
-							mPhotoLock.set(false);
-							Log.v("MobileWebCam", "PhotoLock released!");
-							JobFinished();
-						} });
+						}
+					});
 				}
 			}
 			catch(RuntimeException e)
@@ -567,6 +591,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			
 			if(mCamera != null)
 			{
+				Log.i("MobileWebCam", "mCamera.setPreviewDisplay()");
 				try {
 				   mCamera.setPreviewDisplay(mHolder);
 				} catch (IOException exception) {
@@ -626,6 +651,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 					
 					if(mSettings.mMotionDetect)
 					{
+						Log.i("MobileWebCam", "mCamera.setPreviewCallback()");
 						mCamera.setPreviewCallback(new PreviewCallback() {
 							@Override
 							public void onPreviewFrame(byte[] data, Camera camera)
@@ -819,7 +845,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 										@Override
 										public void run()
 										{
-											mActivity.mMotionTextView.setText("Motion Detected!");
+											if(mActivity.mMotionTextView != null)
+												mActivity.mMotionTextView.setText("Motion Detected!");
 											if(!mSettings.mNoToasts)
 												Toast.makeText(mActivity, "Motion detected!", Toast.LENGTH_SHORT).show();
 										}
@@ -832,7 +859,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 										@Override
 										public void run()
 										{
-											mActivity.mMotionTextView.setText("Moved pixels: " + d + "  motion detected right now!");
+											if(mActivity.mMotionTextView != null)
+												mActivity.mMotionTextView.setText("Moved pixels: " + d + "  motion detected right now!");
 										}
 									});
 								}
@@ -854,7 +882,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 									@Override
 									public void run()
 									{
-										mActivity.mMotionTextView.setText("Moved pixels: " + d + "  last movement: " + sincelastmotion);
+										if(mActivity.mMotionTextView != null)
+											mActivity.mMotionTextView.setText("Moved pixels: " + d + "  last movement: " + sincelastmotion);
 									}
 								});
 							}
@@ -910,7 +939,15 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 					if(mCamera != null)
 					{
 						Log.i("MobileWebCam", "mPostPicture.autofocus.run");
-						mCamera.takePicture(shutterCallback, null, photoCallback);
+						try
+						{
+							mCamera.takePicture(shutterCallback, null, photoCallback);
+						}
+						catch(RuntimeException e)
+						{
+							MobileWebCam.LogE("Error: mCamera.takePicture crashed!");
+							e.printStackTrace();
+						}
 					}
 					else
 					{
@@ -1187,15 +1224,23 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		{
 		    public void run()
 		    {
-		    	if(MobileWebCam.gUploadingCount > 3)
-					mActivity.mTextView.setTextColor(Color.argb(255, 128, 0, 0));
-				else
-					mActivity.mTextView.setTextColor(Color.argb(255, 0, 128, 0));
-				int slowdown = Math.max(0, MobileWebCam.gUploadingCount * MobileWebCam.gUploadingCount - 1) * 1000;
-				if(mSettings.mMode == Mode.MANUAL)
-					mActivity.mTextView.setText("Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Manual Mode active");
-				else
-					mActivity.mTextView.setText("Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Refresh: " + (mSettings.mRefreshDuration + slowdown) / 1000 + " s");
+		    	if(mActivity.mTextView != null)
+		    	{
+			    	if(MobileWebCam.gUploadingCount > 3)
+						mActivity.mTextView.setTextColor(Color.argb(0xff, 0xff, 0x80, 0x80));
+					else
+						mActivity.mTextView.setTextColor(Color.WHITE);
+					int slowdown = Math.max(0, MobileWebCam.gUploadingCount * MobileWebCam.gUploadingCount - 1) * 1000;
+					if(mSettings.mMode == Mode.MANUAL)
+						mActivity.mTextView.setText("Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Manual Mode active");
+					else
+						mActivity.mTextView.setText("Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Refresh: " + (mSettings.mRefreshDuration + slowdown) / 1000 + " s");
+		    	}
+				
+		    	if(mActivity.mCamNameViewFrame != null)
+		    		mActivity.mCamNameViewFrame.setBackgroundColor(mSettings.mTextBackgroundColor);
+		    	if(mActivity.mTextViewFrame != null)
+		    		mActivity.mTextViewFrame.setBackgroundColor(mSettings.mDateTimeBackgroundColor);
 		    }
 		});
 	}

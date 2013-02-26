@@ -14,13 +14,18 @@
 
  		<PreferenceScreen
 		    android:key="market_open"
-			android:title="Please rate this app!"
-			android:summary="Open Google Play"
+			android:title="Rate and recommend"
+			android:summary="Open Google Play ... This really helps for motivation. Thanks!"
 			/>
 
+ 		<CheckBoxPreference
+		    android:key="disable_ads"
+			android:title="Disable ads"
+			android:summary="Save traffic. Please honor the amount of work I put into this and please do not forget to rate the app!"
+			android:defaultValue="false"
+			/>
+ 				
   </PreferenceCategory>
-   
-    </PreferenceCategory>
     	
 	<PreferenceCategory
 		android:title="System settings">
@@ -31,7 +36,14 @@
 			android:summary="Disable the small status messages for picture upload."
 			android:defaultValue="false"
 			/>
-	
+
+	    <CheckBoxPreference
+			android:key="fullscreen"
+			android:title="Fullscreen mode"
+			android:summary="Fullscreen camera preview does not work on all devices. App restart required! Reinstall or clear app data if not working!"
+			android:defaultValue="false"
+			/>
+					
 	    <CheckBoxPreference
 			android:key="shutter"
 			android:title="Shutter sound"
@@ -55,4 +67,21 @@
     
   </PreferenceCategory>
 
+	<PreferenceCategory
+		android:title="Backup">
+		
+		<PreferenceScreen
+			android:key="backup_settings"
+			android:title="Backup settings"
+			android:summary="Dump settings config file to /sdcard/MobileWebCam/config.txt"
+			/>
+
+	    <PreferenceScreen
+			android:key="read_settings"
+			android:title="Restore setting"
+			android:summary="Read settings config file from /sdcard/MobileWebCam/config.txt"
+			/>
+					
+  </PreferenceCategory>
+		
 </PreferenceScreen>

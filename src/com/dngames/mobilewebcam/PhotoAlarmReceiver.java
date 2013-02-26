@@ -46,7 +46,7 @@ public class PhotoAlarmReceiver extends PhotoReceiver
 	@Override
 	public void onReceive(Context context, Intent intent)
 	{
-		Log.i("MobileWebCam", "Alarm went off");
+		MobileWebCam.LogI("Alarm went off");
 		
 		Calendar time = Calendar.getInstance();
 		time.setTimeInMillis(System.currentTimeMillis());
