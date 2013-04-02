@@ -298,16 +298,6 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 		
 		msg += GetPicture(active);
 		
-		if(mSettings.mURL.length() > 0 && mSettings.mUploadPictures)
-		{
-			String picurl = mSettings.mURL.substring(0, mSettings.mURL.lastIndexOf("/") + 1);
-			String url = URLEncoder.encode(picurl);
-			String info = URLEncoder.encode(mSettings.mImprintText);
-			msg += "<p>Share your camera picture on <a href=\"https://plus.google.com/share?url=" + url + "\" onclick=\"javascript:window.open(this.href, '', 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=600,width=600');return false;\"><img src=\"https://www.gstatic.com/images/icons/gplus-16.png\" alt=\"Share on Google+\"/></a>";
-			msg += " or <a href='https://www.facebook.com/sharer.php?u=" + url + "&t=" + info + "'>facebook</a>";
-			msg += " or <a href=\"https://twitter.com/share\" class=\"twitter-share-button\" data-url=\"" + url + "\" data-text=\"" + info + " " + picurl + "\">Tweet</a><script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=\"//platform.twitter.com/widgets.js\";fjs.parentNode.insertBefore(js,fjs);}}(document,\"script\",\"twitter-wjs\");</script></p>";
-		}
-
 		msg += "</td></tr></table>";
 		
 		msg += "<hr>";

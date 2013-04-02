@@ -30,11 +30,4 @@
 		<nature>com.android.ide.eclipse.adt.AndroidNature</nature>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>libs/GoogleAdMobAdsSdk-6.0.0.jar</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/android-sdk-windows/extras/google/admob_ads_sdk/GoogleAdMobAdsSdk-6.0.0.jar</locationURI>
-		</link>
-	</linkedResources>
 </projectDescription>

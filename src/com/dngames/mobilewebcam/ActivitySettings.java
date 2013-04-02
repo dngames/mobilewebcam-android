@@ -15,9 +15,13 @@
 
 package com.dngames.mobilewebcam;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+import android.net.Uri;
 import android.os.Bundle;
+import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.preference.ListPreference;
 import android.widget.Toast;
