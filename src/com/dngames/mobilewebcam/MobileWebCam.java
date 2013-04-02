@@ -42,11 +42,14 @@ import android.provider.Settings.SettingNotFoundException;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.app.AlarmManager;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import android.app.PendingIntent;
 import 	android.content.Intent;
@@ -90,9 +93,12 @@ public class MobileWebCam extends CamActivity
     private static final int MENU_SET_FRONT_BACK = 3;
     private static final int MENU_SET_ZOOM = 4;
     private static final int MENU_SET_WHITEBALANCE = 5;
-    private static final int MENU_SET_FLASH = 6;
-    private static final int MENU_SETTINGS = 7;
-    private static final int MENU_SHUTDOWN = 8;
+    private static final int MENU_SET_SCENEMODE = 6;
+    private static final int MENU_SET_COLOREFFECT = 7;
+    private static final int MENU_SET_EXPOSURE = 8;
+    private static final int MENU_SET_FLASH = 9;
+    private static final int MENU_SETTINGS = 10;
+    private static final int MENU_SHUTDOWN = 11;
 
 	public static int gUploadingCount = 0;
 	public static int gPictureCounter = 0;
@@ -108,8 +114,12 @@ public class MobileWebCam extends CamActivity
 
 	public static int gCurLogInfos = 0;
 	public static String[] gLogInfos = new String[16];
+	
+	public static boolean gCustomReceiverActive = false;
 
     private List<String> menuWhiteBalanceModes = null;
+    private List<String> menuSceneModes = null;
+    private List<String> menuColorEffects = null;
     
     public static void LogI(String message)
     {
@@ -137,12 +147,15 @@ public class MobileWebCam extends CamActivity
 
 		log += "Date and time: " + new Date().toString() + "\r\n";
 
-		log += WorkImage.getBatteryInfo(c, "Battery %d%% %.1f°C") + "\r\n";
+		log += WorkImage.getBatteryInfo(c, "Battery %d%% %.1f\370C") + "\r\n";
 
 		if(settings.mStoreGPS || settings.mImprintGPS)
 		{
-			log += "Latitude: " + String.format("%f", WorkImage.gLatitude) + "\r\n";
-			log += "Longitude: " + String.format("%f", WorkImage.gLongitude) + "\r\n";
+			String lat = String.format(Locale.US, "%f", WorkImage.gLatitude);
+			String lon = String.format(Locale.US, "%f", WorkImage.gLongitude);
+			log += "Latitude: " + lat + "\r\n";
+			log += "Longitude: " + lon + "\r\n";
+			log += "http://maps.google.com/maps?q=" + lat + "," + lon + "+(MobileWebCam+Location)&z=18&ll=" + lat + "," + lon;
 		}
 		
 	    if(prefs.getBoolean("server_enabled", false))
@@ -167,10 +180,20 @@ public class MobileWebCam extends CamActivity
 			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[2];
 		else if(settings.mMode == Mode.HIDDEN)
 			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[3];
-		else if(settings.mMode == Mode.BROADCASTRECEIVER)
-			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[4];
 		if(settings.mMotionDetect)
 			log += " detect motion";
+		if(settings.mNightAutoFlash && settings.mCameraFlash)
+			log += " autoflash";
+		if(settings.mNightAutoBrightness && settings.mNightAutoBrightnessEnabled)
+			log += " autobright";
+		if(settings.mNightIRLight)
+			log += " IR";
+		if(settings.mBroadcastReceiver.length() > 0)
+			log += "\r\nCustom Reiver: " + settings.mBroadcastReceiver + " " + MobileWebCam.gCustomReceiverActive; 
+		if(!settings.mNightAutoBrightnessEnabled)
+			log += String.format("\r\nWhite Balance: %s, Color Effect: %s, Scene Mode: %s, Exposure Compensation: %d", settings.mWhiteBalance, settings.mColorEffect, settings.mSceneMode, settings.mExposureCompensation);
+		else
+			log += String.format("\r\nWhite Balance: %s, Color Effect: %s, Scene Mode: %s, Exposure Compensation: %d", settings.mNightAutoBrightnessWhitebalance, settings.mColorEffect, settings.mNightAutoBrightnessScenemode, settings.mNightAutoBrightnessExposure);
 		float usedMegs = (float)Debug.getNativeHeapAllocatedSize() / (float)1048576L;
 		log += String.format("\r\nMemory used: %.2f MB\r\n", usedMegs);
 		log += String.format("Used upload image size: %d x %d (from %d x %d)\r\n", MobileWebCamHttpService.gImageWidth, MobileWebCamHttpService.gImageHeight, MobileWebCamHttpService.gOriginalImageWidth, MobileWebCamHttpService.gOriginalImageHeight);	    
@@ -246,10 +269,18 @@ public class MobileWebCam extends CamActivity
     		if(params != null)
     		{
     			if(NewCameraFunctions.isZoomSupported(params))
-    				addMenuItem(menu, MENU_SET_ZOOM, "Zoom In", android.R.drawable.ic_menu_crop, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+    				addMenuItem(menu, MENU_SET_ZOOM, "Zoom", android.R.drawable.ic_menu_crop, MenuItem.SHOW_AS_ACTION_IF_ROOM);
     			menuWhiteBalanceModes = NewCameraFunctions.getSupportedWhiteBalance(params);
     			if(menuWhiteBalanceModes != null)
     				addMenuItem(menu, MENU_SET_WHITEBALANCE, "White Balance", android.R.drawable.ic_menu_view, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+    			menuSceneModes = NewCameraFunctions.getSupportedSceneModes(params);
+    			if(menuSceneModes != null)
+    				addMenuItem(menu, MENU_SET_SCENEMODE, "Scene Mode", android.R.drawable.ic_menu_view, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+    			menuColorEffects = NewCameraFunctions.getSupportedColorEffects(params);
+    			if(menuSceneModes != null)
+    				addMenuItem(menu, MENU_SET_COLOREFFECT, "Color Effect", android.R.drawable.ic_menu_view, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+    			if(NewCameraFunctions.getMinExposureCompensation(params) != 0 || NewCameraFunctions.getMaxExposureCompensation(params) != 0)
+    				addMenuItem(menu, MENU_SET_EXPOSURE, "Exposure Compensation", android.R.drawable.ic_menu_view, MenuItem.SHOW_AS_ACTION_IF_ROOM);
 
     	    	if(NewCameraFunctions.isFlashSupported(params))
     	    		addMenuItem(menu, MENU_SET_FLASH, "Toggle Camera Flashlight", android.R.drawable.ic_dialog_alert, MenuItem.SHOW_AS_ACTION_IF_ROOM);
@@ -309,15 +340,101 @@ public class MobileWebCam extends CamActivity
 	        	
 	        case MENU_SET_ZOOM:
 		        {
-		        	mSettings.mZoom += 10;
-		        	if(mSettings.mZoom > 100)
-		        		mSettings.mZoom = 0;
+		            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		            builder.setTitle("Set Zoom");
+		            
+		            LinearLayout layout = new LinearLayout(this); 
+		            layout.setOrientation(1); 
+		            layout.setPadding(6,6,6,6);
+		            final SeekBar seek = new SeekBar(this); 
+		            seek.setProgress(mSettings.mZoom);
+		            seek.setOnSeekBarChangeListener(new OnSeekBarChangeListener()
+		            {
+						@Override
+						public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser)
+						{
+							if(fromUser)
+							{
+			                    mSettings.mZoom = progress;
+					        	SharedPreferences.Editor edit = mPrefs.edit();
+					        	edit.putString("zoom", "" + mSettings.mZoom);
+					        	edit.commit();
+					        	
+								if(mPreview != null && mPreview.mCamera != null)
+									mSettings.SetCameraParameters(mPreview.mCamera);
+							}
+						}
+
+						@Override
+						public void onStartTrackingTouch(SeekBar seekBar)
+						{
+						}
+
+						@Override
+						public void onStopTrackingTouch(SeekBar seekBar)
+						{
+						}});
+		            layout.addView(seek); 
+/*		            TextView text = new TextView(this); 
+		            text.setText("0..100"); 
+		            text.setPadding(10, 10, 10, 10); 
+		            linear.addView(text); */
+		            builder.setView(layout); 
+		            builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
+		            {
+		                public void onClick(DialogInterface dialog, int item)
+		                {
+							Toast.makeText(MobileWebCam.this, "Zoom " + mSettings.mZoom + "%", Toast.LENGTH_SHORT).show();
+		                }
+		            }).show();
+		        }	
+	        	return true;
+
+	        case MENU_SET_EXPOSURE:
+		        {
+		            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		            builder.setTitle("Set Exposure Compensation");
+		            
+		            LinearLayout layout = new LinearLayout(this); 
+		            layout.setOrientation(1); 
+		            layout.setPadding(6,6,6,6);
+		            final SeekBar seek = new SeekBar(this); 
+		            seek.setProgress(mSettings.mExposureCompensation);
+		            seek.setOnSeekBarChangeListener(new OnSeekBarChangeListener()
+		            {
+						@Override
+						public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser)
+						{
+							if(fromUser)
+							{
+			                    mSettings.mExposureCompensation = progress;
+					        	SharedPreferences.Editor edit = mPrefs.edit();
+					        	edit.putString("exposurecompensation", "" + mSettings.mExposureCompensation);
+					        	edit.commit();
+					        	
+								if(mPreview != null && mPreview.mCamera != null)
+									mSettings.SetCameraParameters(mPreview.mCamera);
+							}
+						}
 	
-		        	SharedPreferences.Editor edit = mPrefs.edit();
-		        	edit.putString("zoom", "" + mSettings.mZoom);
-		        	edit.commit();
-		        	
-					Toast.makeText(MobileWebCam.this, "Zoom " + mSettings.mZoom + "%", Toast.LENGTH_SHORT).show();
+						@Override
+						public void onStartTrackingTouch(SeekBar seekBar)
+						{
+						}
+	
+						@Override
+						public void onStopTrackingTouch(SeekBar seekBar)
+						{
+						}});
+		            layout.addView(seek); 
+		            builder.setView(layout); 
+		            builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
+		            {
+		                public void onClick(DialogInterface dialog, int item)
+		                {
+							Toast.makeText(MobileWebCam.this, "Exposure Compensation " + mSettings.mExposureCompensation, Toast.LENGTH_SHORT).show();
+		                }
+		            }).show();
 		        }	
 	        	return true;
 
@@ -334,15 +451,77 @@ public class MobileWebCam extends CamActivity
 	                public void onClick(DialogInterface dialog, int item)
 	                {
 	                    mSettings.mWhiteBalance = menuWhiteBalanceModes.get(item);
+						Toast.makeText(MobileWebCam.this, mSettings.mWhiteBalance, Toast.LENGTH_SHORT).show();
+
+			        	SharedPreferences.Editor edit = mPrefs.edit();
+			        	edit.putString("whitebalance", "" + mSettings.mWhiteBalance);
+			        	edit.commit();
+
+						if(mPreview != null && mPreview.mCamera != null)
+							mSettings.SetCameraParameters(mPreview.mCamera);
 	                }
 	            }).show();
 
-	        	SharedPreferences.Editor edit = mPrefs.edit();
-	        	edit.putString("whitebalance", "" + mSettings.mWhiteBalance);
-	        	edit.commit();
+				return true;
+	        }
+
+	        case MENU_SET_SCENEMODE:
+	        {
+	        	final CharSequence[] items = new CharSequence[menuSceneModes.size()];
+	        	for(int i = 0; i < menuSceneModes.size(); i++)
+	        		items[i] = menuSceneModes.get(i);
+
+	            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+	            builder.setTitle("Set Scene Mode");
+	            builder.setItems(items, new DialogInterface.OnClickListener()
+	            {
+	                public void onClick(DialogInterface dialog, int item)
+	                {
+	                    mSettings.mSceneMode = menuSceneModes.get(item);
+						Toast.makeText(MobileWebCam.this, mSettings.mSceneMode, Toast.LENGTH_SHORT).show();
+
+						SharedPreferences.Editor edit = mPrefs.edit();
+			        	edit.putString("scenemode", "" + mSettings.mSceneMode);
+			        	edit.commit();
+
+						if(mPreview != null && mPreview.mCamera != null)
+							mSettings.SetCameraParameters(mPreview.mCamera);
+	                }
+	            }).show();
+
 	        	return true;
 	        }
-	        	
+
+	        case MENU_SET_COLOREFFECT:
+	        {
+	        	if(menuColorEffects != null)
+	        	{
+		        	final CharSequence[] items = new CharSequence[menuColorEffects.size()];
+		        	for(int i = 0; i < menuColorEffects.size(); i++)
+		        		items[i] = menuColorEffects.get(i);
+	
+		            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		            builder.setTitle("Set Color Effect");
+		            builder.setItems(items, new DialogInterface.OnClickListener()
+		            {
+		                public void onClick(DialogInterface dialog, int item)
+		                {
+		                    mSettings.mColorEffect = menuColorEffects.get(item);
+							Toast.makeText(MobileWebCam.this, mSettings.mColorEffect, Toast.LENGTH_SHORT).show();
+	
+							SharedPreferences.Editor edit = mPrefs.edit();
+		    	        	edit.putString("coloreffect", "" + mSettings.mColorEffect);
+		    	        	edit.commit();
+	
+							if(mPreview != null && mPreview.mCamera != null)
+								mSettings.SetCameraParameters(mPreview.mCamera);
+		                }
+		            }).show();
+	        	}
+
+				return true;
+	        }
+			
 	        case MENU_SET_FLASH:
 		        {
 		        	mSettings.mCameraFlash = !mSettings.mCameraFlash;
@@ -351,10 +530,8 @@ public class MobileWebCam extends CamActivity
 		        	edit.putBoolean("cam_flash", mSettings.mCameraFlash);
 		        	edit.commit();
 		        	
-		        	if(mPreview != null)
-		        	{
-		        		mPreview.RestartCamera();
-		        	}
+					if(mPreview != null && mPreview.mCamera != null)
+						mSettings.SetCameraParameters(mPreview.mCamera);
 		        }
 		        return true;
 
@@ -556,7 +733,7 @@ public class MobileWebCam extends CamActivity
 						mPreview.TakePhoto();
 					}
 			        
-			        mHandler.postDelayed(new Runnable() { public void run() { finish(); } }, 2000);
+// why?					mHandler.postDelayed(new Runnable() { public void run() { finish(); } }, 2000);
 				}
     		}
     		else if(extras.getString("alarm") != null && extras.getString("alarm").startsWith("photo"))
@@ -573,14 +750,10 @@ public class MobileWebCam extends CamActivity
 	{
     	if(key == null || key.equals("camera_mode"))
     	{
-	        String v = prefs.getString("camera_mode", "1");
-	        if(v.length() < 1 || v.length() > 9)
-	        	v = "1";
-	        switch(Integer.parseInt(v))
+        	mSettings.mMode = PhotoSettings.getCamMode(prefs);
+	        switch(mSettings.mMode)
 			{
-			case 0:
-				mSettings.mMode = Mode.MANUAL;
-	
+			case MANUAL:
 				{
 					AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
 					Intent intent = new Intent(this, PhotoAlarmReceiver.class);
@@ -594,9 +767,7 @@ public class MobileWebCam extends CamActivity
 				if(mDrawOnTop != null)
 					mDrawOnTop.setVisibility(View.INVISIBLE);
 				break;
-			case 2:
-				mSettings.mMode = Mode.HIDDEN;
-	
+			case HIDDEN:
 				{
 					AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
 					Intent intent = new Intent(this, PhotoAlarmReceiver.class);
@@ -615,9 +786,7 @@ public class MobileWebCam extends CamActivity
 				if(key != null)// && key.equals("camera_mode"))
 					finish();
 				break;
-			case 3:
-				mSettings.mMode = Mode.BACKGROUND;
-				
+			case BACKGROUND:
 				{
 					AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
 					Intent intent = new Intent(this, PhotoAlarmReceiver.class);
@@ -636,22 +805,8 @@ public class MobileWebCam extends CamActivity
 				if(key != null)// && key.equals("camera_mode"))
 					finish();
 				break;
-			case 4:
-				mSettings.mMode = Mode.BROADCASTRECEIVER;
-	
-				CustomReceiverService.start(MobileWebCam.this);
-				
-				if(mPreview != null)
-					mPreview.setVisibility(View.VISIBLE);
-				if(mDrawOnTop != null)
-					mDrawOnTop.setVisibility(View.INVISIBLE);
-				
-				if(key != null)// && key.equals("camera_mode"))
-					finish();
-				break;
-			case 1:
+			case NORMAL:
 			default:
-				mSettings.mMode = Mode.NORMAL;
 	
 				{
 					AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
@@ -677,6 +832,18 @@ public class MobileWebCam extends CamActivity
 				else
 					mMotionTextView.setVisibility(View.INVISIBLE);
 			}
+    	}
+    	if(key == null || key.equals("cam_broadcast_activation"))
+    	{
+    		if(prefs.getString("cam_broadcast_activation", "").length() > 0)
+    		{
+    			if(!MobileWebCam.gCustomReceiverActive)
+    				CustomReceiverService.start(MobileWebCam.this);
+    		}
+    		else if(MobileWebCam.gCustomReceiverActive)
+    		{
+    			CustomReceiverService.stop(MobileWebCam.this);
+    		}
     	}
     }
 

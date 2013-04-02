@@ -1,61 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <PreferenceScreen
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        android:title="Configure FTP Upload">
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:title="Configure FTP Upload">
 
 	<CheckBoxPreference
 		android:key="ftpserver_upload"
 		android:title="Enable"
 		android:summary="Upload pictures to FTP server when enabled."
-		android:defaultValue="false"
-		/>
+		android:defaultValue="false"/>
 
-  <EditTextPreference
-          android:key="ftp_every"
-          android:title="Frequency"
-          android:summary="Skip upload of pictures. 1 = upload every picture"
-          android:defaultValue="1"
-          android:inputType="number"
-          android:singleLine="true"
-	            />
-
-  <PreferenceCategory
+	<EditTextPreference
+		android:key="ftp_every"
+		android:title="Skip Pictures"
+		android:summary="Upload to ftp only every n pictures taken by the app. 1 = upload every picture"
+		android:defaultValue="1"
+		android:inputType="number"
+		android:singleLine="true"/>	
+		
+  	<PreferenceCategory
 		android:title="Picture Filename Setup">
 		
-  	<EditTextPreference
+  		<EditTextPreference
             android:key="ftpserver_defaultname"
             android:title="Default name"
             android:summary="Your picture filename."
             android:defaultValue="current.jpg"
             android:inputType="textUri"
             android:scrollHorizontally="true"
-            android:singleLine="true"
-            />
+            android:singleLine="true"/>
 		
 		<CheckBoxPreference
 			android:key="cam_filenames"
 			android:title="Numbered"
 			android:summary="Upload numbered pictures instead of same filename for every picture."
-			android:defaultValue="true"
-			/>
+			android:defaultValue="true"/>
 
 		<CheckBoxPreference
 			android:key="cam_datetime"
 			android:title="Date and time"
 			android:summary="Attach date and time to uploaded picture file names."
-			android:defaultValue="false"
-			/>
+			android:defaultValue="false"/>
 			
-	  <EditTextPreference
+	  	<EditTextPreference
             android:key="ftp_keepoldpics"
             android:title="Rename old pictures"
             android:summary="Specify the number of old pictures to keep"
             android:defaultValue="0"
             android:inputType="number"
             android:scrollHorizontally="true"
-            android:singleLine="true"
-	            />
+            android:singleLine="true"/>
 	  
 	</PreferenceCategory>
 		
@@ -72,81 +66,73 @@
             android:singleLine="true"
             />
             
-  <EditTextPreference
+		<EditTextPreference
             android:key="ftp_port"
             android:title="Server port"
             android:summary="ftp server port number."
             android:defaultValue="21"
             android:inputType="number"
             android:scrollHorizontally="true"
-            android:singleLine="true"
-	            />            
+            android:singleLine="true"/>            
 
-  <EditTextPreference
+  		<EditTextPreference
             android:key="ftp_dir"
             android:title="Directory"
             android:summary="Directory on server for your pictures."
             android:defaultValue="/WEBCAM/PICUPLOAD/"
             android:inputType="textUri"
             android:scrollHorizontally="true"
-            android:singleLine="true"
-            />
+            android:singleLine="true"/>
 
-  <EditTextPreference
+		<EditTextPreference
             android:key="ftp_login"
             android:title="Login"
             android:summary="Your login to your ftp server."
             android:defaultValue=""
             android:inputType="text"
             android:scrollHorizontally="true"
-            android:singleLine="true"
-	            />
+            android:singleLine="true"/>
 
-  <EditTextPreference
+		<EditTextPreference
             android:key="ftp_password"
             android:title="Password"
             android:summary="Your password."
             android:defaultValue=""
             android:inputType="textPassword"
             android:scrollHorizontally="true"
-            android:singleLine="true"
-	            />
+            android:singleLine="true"/>
 	            
 		<CheckBoxPreference
 			android:key="cam_passiveftp"
 			android:title="Passive Mode"
 			android:summary="Use passive ftp mode."
-			android:defaultValue="true"
-			/>
+			android:defaultValue="true"/>
 	
 	</PreferenceCategory>
 	
 	<PreferenceCategory
 		android:title="FTP Activity">
-					
+
 		<CheckBoxPreference
 			android:key="ftp_keep_open"
 			android:title="Keep connection"
 			android:summary="Keep ftp connection opened. Faster upload with fast refresh times."
-			android:defaultValue="false"
-			/>		
+			android:defaultValue="false"/>		
 
 		<CheckBoxPreference
 			android:key="ftp_batchalways"
 			android:title="Reliable upload"
 			android:summary="Upload pictures when data connection available. Otherwise only most recent picture will be uploaded if possible. Requires numbered/date upload."
-			android:defaultValue="false"
-			/>		
+			android:defaultValue="false"/>		
 							
-	  <EditTextPreference
-            android:key="ftp_batchupload"
-            android:title="Batch upload"
-            android:summary="Specify the number of pictures to take and store before uploading all at once. With spotty data connection same as Upload when connected setting. Requires numbered/date upload."
-            android:defaultValue="1"
-            android:inputType="number"
-            android:scrollHorizontally="true"
-            android:singleLine="true"
-	            />		
+		<EditTextPreference
+			android:key="ftp_batchupload"
+			android:title="Batch upload"
+			android:summary="Specify the number of pictures to take and store before uploading all at once. With spotty data connection same as Upload when connected setting. Requires numbered/date upload."
+			android:defaultValue="1"
+			android:inputType="number"
+			android:scrollHorizontally="true"
+			android:singleLine="true"/>		
 	            
 	</PreferenceCategory>
 

@@ -31,8 +31,10 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.Field;
+import java.net.URLEncoder;
 
 import com.dngames.mobilewebcam.PhotoSettings.BooleanPref;
+import com.dngames.mobilewebcam.PhotoSettings.EditFloatPref;
 import com.dngames.mobilewebcam.PhotoSettings.EditIntPref;
 import com.dngames.mobilewebcam.PhotoSettings.IntPref;
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
@@ -57,7 +59,7 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 	public Response serve( String uri, String method, Properties header, Properties parms, Properties files )
 	{
 		StringBuilder sb = new StringBuilder();
-		
+
 		if(uri.contentEquals("/favicon.png"))
 		{
 			try {
@@ -154,6 +156,15 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 							edit.putInt(ip.key(), Integer.parseInt(value));
 						}
 					}
+					{
+						EditFloatPref fp = f.getAnnotation(EditFloatPref.class);
+						if(fp != null)
+						{
+							float val = f.getFloat(mSettings);
+							String value = parms.getProperty(fp.key(), val + "");
+							edit.putString(fp.key(), value);
+						}
+					}
 				}			
 			}
 			catch (Exception e)
@@ -166,18 +177,58 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			res.addHeader( "Location", "/");
 			return res;
 		}
+		else if(uri.contentEquals("/configure"))
+		{
+			boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || MobileWebCam.gInSettings || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);		
+			
+			String msg = GetInfoHead(active);
+			
+			msg += "<hr>";
+
+			msg += "<table style='background-color: #000000; color: #FFFFFF; font-family: arial;' border='0' cellpadding='20'><tr><td width='50%'>";
+
+			msg += "<p><form action='set' enctype='multipart/form-data' method='post'>";
+
+			Map<String, List<String>> settings = GetConfigurationSettings();
+			
+			for(String category : settings.keySet())
+			{
+				msg += "<p>" + category + ":<br>";
+				List<String> keys = new ArrayList<String>(settings.get(category));
+				Collections.sort(keys);
+				for(String key : keys)
+					msg += key;
+				msg += "</p>";
+			}
+			
+		    msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' value='Set' type='submit'>";
+		    msg += "</form>";
+		    
+		    msg += " <form action='/' enctype='multipart/form-data' method='post'>";
+		    msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' value='Cancel' type='submit'>";
+		    msg += "</form></p>";					    
+
+			msg += "</td><td>";
+		    
+		    msg += GetPicture(active);
+
+			msg += "</td></tr></table>";
+			
+			msg += "<hr>";
+		    
+		    msg += "</td></tr></table></font></body></html>\n";
+			
+			return new NanoHTTPD.Response( HTTP_OK, MIME_HTML + "; charset=utf-8", msg );
+		}
 		
-		boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || MobileWebCam.gInSettings || mSettings.mMode == Mode.BROADCASTRECEIVER || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);		
-		String info_app = getVersionNumber(mContext);
-		String info_device = android.os.Build.MODEL + " " + android.os.Build.VERSION.RELEASE + " " + android.os.Build.DISPLAY;		
+		if(mSettings == null)
+			return new NanoHTTPD.Response(HTTP_OK, MIME_HTML + "; charset=utf-8", "Error: mSettings is null! Please write to <a href=\"mailto:dngames@gmail.com\">dngames@gmail.com</a> what you tried to do!");
 		
-		String msg = "<html><head><link rel='icon' href='favicon.png' type='image/png'>";
-		if(active)
-			msg += "<meta http-equiv='refresh' content='" + mSettings.mRefreshDuration / 1000 + "'>";
-		msg += "<title>MobileWebCam " + info_app + " " + info_device + "</title>";
-		msg += "</head><body bgcolor='#000000'><font color='#ffffff' face='arial'>";
-				
-		msg += "<h1>MobileWebCam " + info_app + " " + info_device + "</h1>";
+		SharedPreferences prefs = mContext.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
+		
+		boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || MobileWebCam.gInSettings || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);		
+
+		String msg = GetInfoHead(active); 
 		
 		msg += "<hr>";
 
@@ -187,7 +238,7 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			msg += "Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Manual Mode active" + "<br>";
 		else
 			msg += "Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "<br>";
-		msg += WorkImage.getBatteryInfo(mContext, "Battery %d%% %.1f°C") + "<br>";
+		msg += WorkImage.getBatteryInfo(mContext, "Battery %d%% %.1f&deg;C") + "<br>";
 		msg += "Orientation: " + Preview.gOrientation + "<br>";;
 		if(mSettings.mMode == Mode.MANUAL)
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[0];
@@ -197,10 +248,24 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[2];
 		else if(mSettings.mMode == Mode.HIDDEN)
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[3];
-		else if(mSettings.mMode == Mode.BROADCASTRECEIVER)
-			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[4];
 		if(mSettings.mMotionDetect)
 			msg += " detect motion";
+		if(mSettings.mNightAutoFlash && mSettings.mCameraFlash)
+			msg += " autoflash";
+		if(mSettings.mNightAutoBrightness && mSettings.mNightAutoBrightnessEnabled)
+			msg += " autobright";
+		if(mSettings.mNightIRLight)
+			msg += " IR";
+		if(!mSettings.mNightAutoBrightnessEnabled)
+			msg += String.format("<br>White Balance: %s, Color Effect: %s, Scene Mode: %s, Exposure Compensation: %d", mSettings.mWhiteBalance, mSettings.mColorEffect, mSettings.mSceneMode, mSettings.mExposureCompensation);
+		else
+			msg += String.format("<br>White Balance: %s, Color Effect: %s, Scene Mode: %s, Exposure Compensation: %d", mSettings.mNightAutoBrightnessWhitebalance, mSettings.mColorEffect, mSettings.mNightAutoBrightnessScenemode, mSettings.mNightAutoBrightnessExposure);
+		if(mSettings.mStoreGPS || mSettings.mImprintGPS)
+		{
+			String lat = String.format(Locale.US, "%f", WorkImage.gLatitude);
+			String lon = String.format(Locale.US, "%f", WorkImage.gLongitude);
+			msg += "<br>Position: <a href='http://maps.google.com/maps?q=" + lat + "," + lon + "+(MobileWebCam+Location)&z=18&ll=" + lat + "," + lon + "'>" + lat + ", " + lon+ "</a>";
+		}
 		float usedMegs = (float)Debug.getNativeHeapAllocatedSize() / (float)1048576L;
 		msg += String.format("<br>Memory used: %.2f MB", usedMegs);
 		msg += String.format("<br>Used upload image size: %d x %d (from %d x %d)", MobileWebCamHttpService.gImageWidth, MobileWebCamHttpService.gImageHeight, MobileWebCamHttpService.gOriginalImageWidth, MobileWebCamHttpService.gOriginalImageHeight);
@@ -218,107 +283,11 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 		    msg += "<p><form action='stop' enctype='multipart/form-data' method='post'>";
 		    msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' value='Stop Camera' type='submit'>";
 		    msg += "</form></p>";
-		}
+		}		
 		
-		msg += "<p><form action='set' enctype='multipart/form-data' method='post'>";
-
-		Map<String, List<String>> settings = new TreeMap<String, List<String>>();
-		try
-		{
-			for(Field f : PhotoSettings.class.getFields())
-			{
-				{
-					BooleanPref bp = f.getAnnotation(BooleanPref.class);
-					if(bp != null && bp.help().length() > 0)
-					{
-						boolean val = f.getBoolean(mSettings);
-						List<String> entries = settings.containsKey(bp.category()) ? settings.get(bp.category()) : new ArrayList<String>();
-						entries.add("<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='" + bp.key() + "' " + (val ? "checked='checked'" : "") + "> " + bp.help() + "<br>");
-						settings.put(bp.category(), entries);
-					}
-				}
-				{
-					StringPref sp = f.getAnnotation(StringPref.class);
-					if(sp != null && sp.help().length() > 0)
-					{
-						String val = (String)f.get(mSettings);
-						List<String> entries = settings.containsKey(sp.category()) ? settings.get(sp.category()) : new ArrayList<String>();
-						entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + sp.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + sp.key() + "' value='" + val + "' type='" + sp.htmltype() + "'><br>");
-						settings.put(sp.category(), entries);
-					}
-				}
-				{
-					EditIntPref ip = f.getAnnotation(EditIntPref.class);
-					if(ip != null && ip.help().length() > 0)
-					{
-						List<String> entries = settings.containsKey(ip.category()) ? settings.get(ip.category()) : new ArrayList<String>();
-						if(ip.select().length() > 0)
-						{
-							String val = f.getInt(mSettings) + "";
-							String select = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <select style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "'>";
-							String[] sels = ip.select().split(",");
-							for(String s : sels)
-							{
-								String[] option = s.split("=");
-								String v = option[0].trim();
-								select += "<option value='" + v + "'" + (val.equals(v) ? " selected" : "") + ">" + option[1].trim() + "</option>";
-							}
-							select += "</select><br>";
-							entries.add(select);
-						}
-						else
-						{
-							int val = f.getInt(mSettings);
-							entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "' value='" + val / ip.factor() + "' type='text'><br>");
-						}
-						settings.put(ip.category(), entries);
-					}
-				}
-				{
-					IntPref ip = f.getAnnotation(IntPref.class);
-					if(ip != null && ip.help().length() > 0)
-					{
-						List<String> entries = settings.containsKey(ip.category()) ? settings.get(ip.category()) : new ArrayList<String>();
-						int val = f.getInt(mSettings);
-						entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "' value='" + val / ip.factor() + "' type='text'><br>");
-						settings.put(ip.category(), entries);
-					}
-				}
-			}
-		}			
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
-		
-		for(String category : settings.keySet())
-		{
-			msg += "<p>" + category + ":<br>";
-			List<String> keys = new ArrayList<String>(settings.get(category));
-			Collections.sort(keys);
-			for(String key : keys)
-				msg += key;
-			msg += "</p>";
-		}
-		
-/*		
-		msg += "Upload:<br>";
-		msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='http' " + (mSettings.mUploadPictures ? "checked='checked'" : "") + "> http website post<br>";
-		msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='ftp' " + (mSettings.mFTPPictures ? "checked='checked'" : "") + "> upload to ftp<br>";
-		msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='mail' " + (mSettings.mMailPictures ? "checked='checked'" : "") + "> email picture<br>";
-		msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='sdcard' " + (mSettings.mStorePictures ? "checked='checked'" : "") + "> store on SDCard<br>";
-		msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='dropbox' " + (mSettings.mDropboxPictures ? "checked='checked'" : "") + "> upload to dropbox</p>";
-
-	    msg += "<p>Refresh Duration: <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='refresh' value='" + mSettings.mRefreshDuration / 1000 + "' type='text'></p>";
-
-	    msg += "<p>Activity Start Time: <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='starttime' value='" + mSettings.mStartTime + "' type='time'><br>";
-	    msg += "Activity End Time: <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='endtime' value='" + mSettings.mEndTime + "' type='time'></p>";
-
-	    msg += "<p><input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='night_detect' " + (mSettings.mNightDetect ? "checked='checked'" : "") + "> Do not upload dark/night pictures.</p>";
-	    */
-
-	    msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' value='Set' type='submit'>";
-	    msg += "</form><p>";
+		msg += "<p><form  action='configure' enctype='multipart/form-data' method='post'>";
+	    msg += "<input style='color: #FFFFFF; font-family: arial;background-color: #000000' value='Change Settings' type='submit'>";
+	    msg += "</form></p>";		
 	    
 	    msg += "<hr>";
 		
@@ -327,30 +296,16 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 		
 		msg += "</td><td>";
 		
-		// hack
-		if(active && MobileWebCamHttpService.gImageData != null)
+		msg += GetPicture(active);
+		
+		if(mSettings.mURL.length() > 0 && mSettings.mUploadPictures)
 		{
-			msg += "<img src='current.jpg' name='refresh'>\n"; 
-			msg += "  <script language='JavaScript' type='text/javascript'>\n"; 
-			msg += "  <!-- \n"; 
-			msg += "  image = 'current.jpg' //name of the image\n";  
-			msg += "  function Reload() { \n"; 
-			msg += "  tmp = new Date();\n";  
-			msg += "  tmp = '?'+tmp.getTime()\n";  
-			msg += "  document.images['refresh'].src = image+tmp\n";  
-			msg += "  setTimeout('Reload()'," + Math.min(5000, mSettings.mRefreshDuration) + ")\n"; 
-			msg += "  }\n"; 
-			msg += "  Reload();\n";  
-			msg += "// -->\n"; 
-			msg += "</script>\n";  
-		}
-		else if(MobileWebCamHttpService.gImageData != null)
-		{
-			msg += "<img src='current.jpg' name='refresh' alt='last taken picture'>";
-		}
-		else
-		{
-			msg += "No camera with preview active or no picture taken yet!";
+			String picurl = mSettings.mURL.substring(0, mSettings.mURL.lastIndexOf("/") + 1);
+			String url = URLEncoder.encode(picurl);
+			String info = URLEncoder.encode(mSettings.mImprintText);
+			msg += "<p>Share your camera picture on <a href=\"https://plus.google.com/share?url=" + url + "\" onclick=\"javascript:window.open(this.href, '', 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=600,width=600');return false;\"><img src=\"https://www.gstatic.com/images/icons/gplus-16.png\" alt=\"Share on Google+\"/></a>";
+			msg += " or <a href='https://www.facebook.com/sharer.php?u=" + url + "&t=" + info + "'>facebook</a>";
+			msg += " or <a href=\"https://twitter.com/share\" class=\"twitter-share-button\" data-url=\"" + url + "\" data-text=\"" + info + " " + picurl + "\">Tweet</a><script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=\"//platform.twitter.com/widgets.js\";fjs.parentNode.insertBefore(js,fjs);}}(document,\"script\",\"twitter-wjs\");</script></p>";
 		}
 
 		msg += "</td></tr></table>";
@@ -435,7 +390,7 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 		@Override
 		public int available() throws IOException
 		{
-			boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || mSettings.mMode == Mode.BROADCASTRECEIVER || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);
+			boolean active = mSettings.mMobileWebCamEnabled && (MobileWebCam.gIsRunning || mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.HIDDEN);
 			if(!active)
 				return -1;
 			
@@ -594,5 +549,139 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			}
 			return copy;
 		}
+	}
+	
+	// collect all settings that can be configured here (category + help set) sorted by category
+	private Map<String, List<String>> GetConfigurationSettings()
+	{
+		Map<String, List<String>> settings = new TreeMap<String, List<String>>();
+		try
+		{
+			for(Field f : PhotoSettings.class.getFields())
+			{
+				{
+					BooleanPref bp = f.getAnnotation(BooleanPref.class);
+					if(bp != null && bp.help().length() > 0)
+					{
+						boolean val = f.getBoolean(mSettings);
+						List<String> entries = settings.containsKey(bp.category()) ? settings.get(bp.category()) : new ArrayList<String>();
+						entries.add("<input style='color: #FFFFFF; font-family: arial;background-color: #000000' type='Checkbox' name='" + bp.key() + "' " + (val ? "checked='checked'" : "") + "> " + bp.help() + "<br>");
+						settings.put(bp.category(), entries);
+					}
+				}
+				{
+					StringPref sp = f.getAnnotation(StringPref.class);
+					if(sp != null && sp.help().length() > 0)
+					{
+						String val = (String)f.get(mSettings);
+						List<String> entries = settings.containsKey(sp.category()) ? settings.get(sp.category()) : new ArrayList<String>();
+						entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + sp.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + sp.key() + "' value='" + val + "' type='" + sp.htmltype() + "'><br>");
+						settings.put(sp.category(), entries);
+					}
+				}
+				{
+					EditIntPref ip = f.getAnnotation(EditIntPref.class);
+					if(ip != null && ip.help().length() > 0)
+					{
+						List<String> entries = settings.containsKey(ip.category()) ? settings.get(ip.category()) : new ArrayList<String>();
+						if(ip.select().length() > 0)
+						{
+							String val = f.getInt(mSettings) + "";
+							String select = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <select style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "'>";
+							String[] sels = ip.select().split(",");
+							for(String s : sels)
+							{
+								String[] option = s.split("=");
+								String v = option[0].trim();
+								select += "<option value='" + v + "'" + (val.equals(v) ? " selected" : "") + ">" + option[1].trim() + "</option>";
+							}
+							select += "</select><br>";
+							entries.add(select);
+						}
+						else
+						{
+							int val = f.getInt(mSettings);
+							entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "' value='" + val / ip.factor() + "' type='text'><br>");
+						}
+						settings.put(ip.category(), entries);
+					}
+				}
+				{
+					IntPref ip = f.getAnnotation(IntPref.class);
+					if(ip != null && ip.help().length() > 0)
+					{
+						List<String> entries = settings.containsKey(ip.category()) ? settings.get(ip.category()) : new ArrayList<String>();
+						int val = f.getInt(mSettings);
+						entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + ip.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + ip.key() + "' value='" + val / ip.factor() + "' type='text'><br>");
+						settings.put(ip.category(), entries);
+					}
+				}
+				{
+					EditFloatPref fp = f.getAnnotation(EditFloatPref.class);
+					if(fp != null && fp.help().length() > 0)
+					{
+						List<String> entries = settings.containsKey(fp.category()) ? settings.get(fp.category()) : new ArrayList<String>();
+						float val = f.getFloat(mSettings);
+						entries.add("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + fp.help() + ": <input style='color: #FFFFFF; font-family: arial;background-color: #000000' name='" + fp.key() + "' value='" + val + "' type='text'><br>");
+						settings.put(fp.category(), entries);
+					}
+				}				
+			}
+		}			
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		return settings;
+	}
+	
+	// general info header string
+	private String GetInfoHead(boolean active)
+	{
+		String info_app = getVersionNumber(mContext);
+		String info_device = android.os.Build.MODEL + " " + android.os.Build.VERSION.RELEASE + " " + android.os.Build.DISPLAY;		
+		
+		String msg = "<html><head><link rel='icon' href='favicon.png' type='image/png'>";
+		if(active)
+			msg += "<meta http-equiv='refresh' content='" + mSettings.mRefreshDuration / 1000 + "'>";
+		msg += "<title>MobileWebCam " + info_app + " " + info_device + "</title>";
+		msg += "</head><body bgcolor='#000000'><font color='#ffffff' face='arial'>";
+				
+		msg += "<h1>MobileWebCam " + info_app + " " + info_device + "</h1>";
+		
+		return msg;
+	}
+	
+	private String GetPicture(boolean active)
+	{
+		String msg = "";
+		
+		// hack
+		if(active && MobileWebCamHttpService.gImageData != null)
+		{
+			msg += "<img src='current.jpg' name='refresh'>\n"; 
+			msg += "  <script language='JavaScript' type='text/javascript'>\n"; 
+			msg += "  <!-- \n"; 
+			msg += "  image = 'current.jpg' //name of the image\n";  
+			msg += "  function Reload() { \n"; 
+			msg += "  tmp = new Date();\n";  
+			msg += "  tmp = '?'+tmp.getTime()\n";  
+			msg += "  document.images['refresh'].src = image+tmp\n";  
+			msg += "  setTimeout('Reload()'," + Math.min(5000, mSettings.mRefreshDuration) + ")\n"; 
+			msg += "  }\n"; 
+			msg += "  Reload();\n";  
+			msg += "// -->\n"; 
+			msg += "</script>\n";  
+		}
+		else if(MobileWebCamHttpService.gImageData != null)
+		{
+			msg += "<img src='current.jpg' name='refresh' alt='last taken picture'>";
+		}
+		else
+		{
+			msg += "No camera with preview active or no picture taken yet!";
+		}
+		
+		return msg;
 	}
 }

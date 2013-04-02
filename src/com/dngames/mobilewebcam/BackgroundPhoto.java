@@ -49,94 +49,58 @@ public class BackgroundPhoto implements ITextUpdater
 		
 		String startTime = prefs.getString("activity_starttime", "00:00");
 		String endTime = prefs.getString("activity_endtime", "24:00");
-
-		Date date = new Date();
-		String[] time = startTime.split(":");
-		int h = 0;
-		int m = 0;
-		try
+		if(Preview.CheckInTime(new Date(), startTime, endTime, false))
 		{
-			if(time.length > 0)
-				h = Integer.parseInt(time[0]);
-			if(time.length > 1)
-				m = Integer.parseInt(time[1]);
-		}
-		catch(NumberFormatException e)
-		{
-			MobileWebCam.LogE("Invalid activity start time format!");
-		}
-		int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
-		int check_dayminutes = h * 60 + m; 
-		if(cur_dayminutes >= check_dayminutes || startTime.equals(endTime) || ignoreinactivity)
-		{
-			time = endTime.split(":");
-			h = 24;
-			m = 0;
-			try
+			if(mWakeLock == null || !mWakeLock.isHeld())
 			{
-				if(time.length > 0)
-					h = Integer.parseInt(time[0]);
-				if(time.length > 1)
-					m = Integer.parseInt(time[1]);
+				// get lock for one picture
+				PowerManager pwrmgr = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
+				mWakeLock = pwrmgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MobileWebCam.PhotoAlarm");
+			    mWakeLock.acquire();
+			    
+			    Log.v("MobileWebCam", "PhotoAlarmWakeLock aquired!");
 			}
-			catch(NumberFormatException e)
+			
+			if(mode == Mode.HIDDEN)
 			{
-				MobileWebCam.LogE("Invalid activity end time format!");
-			}
-			check_dayminutes = h * 60 + m; 
-			if(cur_dayminutes < check_dayminutes || startTime.equals(endTime) || ignoreinactivity)
-			{
-				if(mWakeLock == null || !mWakeLock.isHeld())
+				ConnectivityManager connmgr = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+				if(connmgr.getNetworkPreference() == ConnectivityManager.TYPE_WIFI)
 				{
-					// get lock for one picture
-					PowerManager pwrmgr = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
-					mWakeLock = pwrmgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MobileWebCam.PhotoAlarm");
-				    mWakeLock.acquire();
-				    
-				    Log.v("MobileWebCam", "PhotoAlarmWakeLock aquired!");
+					WifiManager wmgr = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
+					if(mWifiLock == null || !mWifiLock.isHeld())
+					{
+						mWifiLock = wmgr.createWifiLock(WifiManager.WIFI_MODE_FULL, "MobileWebCam.PhotoAlarm");
+						mWifiLock.acquire();
+						Log.v("MobileWebCam", "WifiLock aquired!");
+					}		
 				}
 				
-				if(mode == Mode.HIDDEN)
+				new PhotoService(context, this).TakePicture();
+			}
+			else if(!MobileWebCam.gInSettings)
+			{
+				if(MobileWebCam.gIsRunning)
 				{
-					ConnectivityManager connmgr = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
-					if(connmgr.getNetworkPreference() == ConnectivityManager.TYPE_WIFI)
-					{
-						WifiManager wmgr = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
-						if(mWifiLock == null || !mWifiLock.isHeld())
-						{
-							mWifiLock = wmgr.createWifiLock(WifiManager.WIFI_MODE_FULL, "MobileWebCam.PhotoAlarm");
-							mWifiLock.acquire();
-							Log.v("MobileWebCam", "WifiLock aquired!");
-						}		
-					}
-					
-					new PhotoService(context, this).TakePicture();
+					Intent i = new Intent(context, MobileWebCam.class);
+					i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+					i.putExtra("alarm", "photo");
+					context.startActivity(i);
 				}
-				else if(!MobileWebCam.gInSettings)
+				else if(mode == Mode.BACKGROUND)
 				{
-					if(MobileWebCam.gIsRunning)
-					{
-						Intent i = new Intent(context, MobileWebCam.class);
-						i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-						i.putExtra("alarm", "photo");
-						context.startActivity(i);
-					}
-					else if(mode == Mode.BACKGROUND || mode == Mode.BROADCASTRECEIVER)
-					{
-						Intent i = new Intent(context, TakeHiddenPicture.class);
-						i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_FROM_BACKGROUND);
-						i.putExtra("alarm", "photo");
-						context.startActivity(i);
-					}
-					else
-					{
-						JobFinished();
-					}
+					Intent i = new Intent(context, TakeHiddenPicture.class);
+					i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_FROM_BACKGROUND);
+					i.putExtra("alarm", "photo");
+					context.startActivity(i);
 				}
 				else
 				{
 					JobFinished();
 				}
+			}
+			else
+			{
+				JobFinished();
 			}
 		}
 	}	

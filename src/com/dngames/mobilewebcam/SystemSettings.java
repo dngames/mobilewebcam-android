@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 
@@ -93,15 +94,14 @@ public class SystemSettings extends PreferenceActivity
     	    	    exists = path.mkdirs();
     	    	if(exists)
     	    	{
+    	    		String config = PhotoSettings.DumpSettings(SystemSettings.this, prefs);
 					try
 					{
-						PrintStream ps = new PrintStream(new File(path, "config.txt"));
-						ps.print(PhotoSettings.DumpSettings(prefs));
-						ps.close();
+						FileWriter file = new FileWriter(new File(path, "config.txt"));
+						file.write(config);
+						file.close();
 						Toast.makeText(SystemSettings.this, "ok", Toast.LENGTH_SHORT).show();						
-					}
-					catch (FileNotFoundException e)
-					{
+					} catch (IOException e) {
 						Toast.makeText(SystemSettings.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
 						e.printStackTrace();
 					}
@@ -128,7 +128,7 @@ public class SystemSettings extends PreferenceActivity
 							cfg.append(line);
 							cfg.append('\n');
 						}
-						PhotoSettings.GETSettings(cfg.toString(), prefs);
+						PhotoSettings.GETSettings(SystemSettings.this, cfg.toString(), prefs);
 						Toast.makeText(SystemSettings.this, "ok", Toast.LENGTH_SHORT).show();						
 					}
 					catch(IOException e)

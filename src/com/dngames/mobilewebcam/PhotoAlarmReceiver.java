@@ -56,14 +56,10 @@ public class PhotoAlarmReceiver extends PhotoReceiver
 		if(!prefs.getBoolean("mobilewebcam_enabled", true))
 			return;
 		
-        String v = prefs.getString("camera_mode", "1");
-        if(v.length() < 1 || v.length() > 9)
-        	v = "1";
-        PhotoSettings.Mode mode = PhotoSettings.Mode.values()[Integer.parseInt(v)];
-
+        PhotoSettings.Mode mode = PhotoSettings.getCamMode(prefs);
 		if(mode == Mode.HIDDEN || mode == Mode.BACKGROUND)
 		{
-	        v = prefs.getString("cam_refresh", "60");
+	        String v = prefs.getString("cam_refresh", "60");
 	        if(v.length() < 1 || v.length() > 9)
 	        	v = "60";
 	        int refresh = Integer.parseInt(v);

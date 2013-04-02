@@ -171,7 +171,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						{
 							Log.i("MobileWebCam", "mPostPicture.run mCamera");
 							
-							if(!mSettings.mURL.equals(mSettings.mDefaulturl) || (mSettings.mFTPPictures && !mSettings.mFTP.equals(mSettings.mDefaultFTPurl)) || mSettings.mMailPictures || mSettings.mStorePictures || mSettings.mDropboxPictures)
+							if ((mSettings.mFTPPictures && !mSettings.mFTP.equals(mSettings.mDefaultFTPurl) || mSettings.mStorePictures)
 							{
 								boolean ignoreinactivity = false; 
 								long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
@@ -183,118 +183,98 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 								}
 								
 								Date date = new Date();
-								String[] time = mSettings.mStartTime.split(":");
-								int h = 0;
-								int m = 0;
-								try
+								if(CheckInTime(date, mSettings.mStartTime, mSettings.mEndTime, false) || ignoreinactivity)
 								{
-									if(time.length > 0)
-										h = Integer.parseInt(time[0]);
-									if(time.length > 1)
-										m = Integer.parseInt(time[1]);
-								}
-								catch(NumberFormatException e)
-								{
-									MobileWebCam.LogE("Invalid activity start time format!");
-								}
-								int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
-								int check_dayminutes = h * 60 + m; 
-								if(cur_dayminutes >= check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
-								{
-									time = mSettings.mEndTime.split(":");
-									h = 24;
-									m = 0;
+									Log.i("MobileWebCam", "mPostPicture.try");
+									if(!mSettings.mShutterSound)
+									{
+										AudioManager mgr = (AudioManager)mActivity.getSystemService(Context.AUDIO_SERVICE);
+										mgr.setStreamMute(AudioManager.STREAM_SYSTEM, true);
+									}
 									try
 									{
-										if(time.length > 0)
-											h = Integer.parseInt(time[0]);
-										if(time.length > 1)
-											m = Integer.parseInt(time[1]);
-									}
-									catch(NumberFormatException e)
-									{
-										MobileWebCam.LogE("Invalid activity end time format!");
-									}
-									check_dayminutes = h * 60 + m; 
-									if(cur_dayminutes < check_dayminutes || mSettings.mStartTime.equals(mSettings.mEndTime) || ignoreinactivity)
-									{
-										Log.i("MobileWebCam", "mPostPicture.try");
-										if(!mSettings.mShutterSound)
+										Log.i("MobileWebCam", "mPostPicture.ok");
+										mCamera.setPreviewCallback(null);
+										
+										Camera.Parameters params = mCamera.getParameters();
+										if(params != null)
 										{
-											AudioManager mgr = (AudioManager)mActivity.getSystemService(Context.AUDIO_SERVICE);
-											mgr.setStreamMute(AudioManager.STREAM_SYSTEM, true);
-										}
-										try
-										{
-											Log.i("MobileWebCam", "mPostPicture.ok");
-											mCamera.setPreviewCallback(null);
-											
-											Camera.Parameters params = mCamera.getParameters();
-											if(params != null)
+											if(mSettings.mImageSize == 4 || mSettings.mImageSize == 5)
 											{
-												if(mSettings.mImageSize == 4 || mSettings.mImageSize == 5)
-												{
-									        		List<Camera.Size> sizes = NewCameraFunctions.getSupportedPictureSizes(params);
-									        		if(sizes != null)
-									        		{
-									        			params.setPictureSize(sizes.get(0).width, sizes.get(0).height);
-									        			if(mSettings.mImageSize == 5)
-									        			{
-									        				// find best matching size (next larger)
-									        				for(int i = sizes.size() - 1; i >= 0; i--)
-									        				{
-									        					Camera.Size s = sizes.get(i);
-									        					if(s.width >= mSettings.mCustomImageW && s.height >= mSettings.mCustomImageH)
-									        					{
-										        					params.setPictureSize(s.width, s.height);
-										        					break;
-									        					}
-									        				}
-									        			}
-										        		mCamera.setParameters(params);
-									        		}
-												}
-												
-												if(NewCameraFunctions.isZoomSupported(params))
-													NewCameraFunctions.setZoom(params, mSettings.mZoom);
-												if(NewCameraFunctions.getSupportedWhiteBalance(params) != null)
-													NewCameraFunctions.setWhiteBalance(params, mSettings.mWhiteBalance);
-												if(NewCameraFunctions.isFlashSupported(params))
-													NewCameraFunctions.setFlash(params, mSettings.mCameraFlash ? Camera.Parameters.FLASH_MODE_ON : Camera.Parameters.FLASH_MODE_OFF);											
-												try
-												{
-													mCamera.setParameters(params);
-												}
-												catch(RuntimeException e)
-												{
-													e.printStackTrace();
-												}
+								        		List<Camera.Size> sizes = NewCameraFunctions.getSupportedPictureSizes(params);
+								        		if(sizes != null)
+								        		{
+								        			params.setPictureSize(sizes.get(0).width, sizes.get(0).height);
+								        			if(mSettings.mImageSize == 5)
+								        			{
+								        				// find best matching size (next larger)
+								        				for(int i = sizes.size() - 1; i >= 0; i--)
+								        				{
+								        					Camera.Size s = sizes.get(i);
+								        					if(s.width >= mSettings.mCustomImageW && s.height >= mSettings.mCustomImageH)
+								        					{
+									        					params.setPictureSize(s.width, s.height);
+									        					break;
+								        					}
+								        				}
+								        			}
+								        		}
 											}
-											
-											MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();										
-											
+											mSettings.SetCameraParameters(params);
+											try
+											{
+												mCamera.setParameters(params);
+											}
+											catch(RuntimeException e)
+											{
+												MobileWebCam.LogE("Camera parameter set failed! Invalid settings?");
+												e.printStackTrace();
+											}
+										}
+										
+										MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();
+										
+										if(!MobileWebCam.gIsRunning && mSettings.mDelayAfterCameraOpened > 0)
+										{
+											// in semi background mode some devices may need to wait for camera to be ready
+											// but to keep the ui thread running take the picture in another thread
+											new Thread(new Runnable()
+											{ 
+												@Override
+												public void run()
+												{
+													try {
+														Thread.sleep(mSettings.mDelayAfterCameraOpened);
+													} catch (InterruptedException e) {
+														e.printStackTrace();												
+													}
+
+													if(mCamera != null)
+													{
+														if(mSettings.mAutoFocus)
+															mCamera.autoFocus(autofocusCallback);
+														else
+															mCamera.takePicture(shutterCallback, null, photoCallback);
+													}
+												}
+											}).run();
+										}
+										else
+										{
+											// finally take the picture
 											if(mSettings.mAutoFocus)
 												mCamera.autoFocus(autofocusCallback);
 											else
 												mCamera.takePicture(shutterCallback, null, photoCallback);
 										}
-										catch(RuntimeException e)
-										{
-											e.printStackTrace();
-		/*									if(e.getMessage() != null)
-												Toast.makeText(mActivity, "takePicture\n" + e.getMessage(), Toast.LENGTH_SHORT).show();
-											else
-												Toast.makeText(mActivity, "Android camera error:\ntakePicture failed!", Toast.LENGTH_SHORT).show();*/
-										}
 									}
-									else
+									catch(RuntimeException e)
 									{
-										// no time
+										if(e.getMessage() != null)
+											MobileWebCam.LogE(e.getMessage());
+										e.printStackTrace();
+										Log.v("MobileWebCam", "PhotoLock released!");
 										mPhotoLock.set(false);
-										Log.v("MobileWebCam", "No active time! PhotoLock released!");
-										if(mSettings.mMode == Mode.MANUAL)
-											MobileWebCam.LogI("No active time!");
-	
 										JobFinished();
 									}
 								}
@@ -322,6 +302,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	
 							if(mSettings.mMode != Mode.MANUAL)
 							{
+								// set time for next picture
 								int slowdown = Math.max(0, MobileWebCam.gUploadingCount * MobileWebCam.gUploadingCount - 1) * 1000;
 								int time = mSettings.mRefreshDuration + slowdown;
 								if(!mSettings.mMotionDetect || (System.currentTimeMillis() - MobileWebCam.gLastMotionTime < time))
@@ -379,6 +360,58 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			}
 		};
 	};
+	
+	// calc minutes of the day from hours:minutes time string
+	private static int getDayMinutes(String tstr, int hour, String use)
+	{
+		String[] time = tstr.split(":");
+		int h = hour;
+		int m = 0;
+		try
+		{
+			if(time.length > 0)
+				h = Integer.parseInt(time[0]);
+			if(time.length > 1)
+				m = Integer.parseInt(time[1]);
+		}
+		catch(NumberFormatException e)
+		{
+			MobileWebCam.LogE("Invalid activity " + use + " time format!");
+		}
+		
+		return h * 60 + m;
+	}
+	
+	// Check if the given date time is inside the start-end time interval in daily hours.
+	public static boolean CheckInTime(Date date, String starttime, String endtime, boolean night)
+	{
+		if(starttime.equals(endtime))
+			return true;
+		
+		int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
+		if(night)
+		{
+			int check_dayminutes = getDayMinutes(starttime, 24, "night start"); 
+			if(cur_dayminutes >= check_dayminutes)
+				return true;
+				
+			check_dayminutes = getDayMinutes(endtime, 0, "night end");
+			if(cur_dayminutes < check_dayminutes)
+				return true;
+		}
+		else
+		{
+			int check_dayminutes = getDayMinutes(starttime, 0, "start"); 
+			if(cur_dayminutes >= check_dayminutes)
+			{
+				check_dayminutes = getDayMinutes(endtime, 24, "end");
+				if(cur_dayminutes < check_dayminutes)
+					return true;
+			}
+		}
+		
+		return false;
+	}
 	
 	private OrientationEventListener mOrientationListener = null;
     
@@ -619,8 +652,9 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 					Camera.Parameters parameters = mCamera.getParameters();
 					if(parameters != null)
 					{
-						parameters.set("orientation", "landscape"); 
-
+						parameters.set("orientation", "landscape");						
+		        		mCamera.setParameters(parameters);
+		        		mSettings.SetCameraParameters(parameters);
 						try
 						{
 							mCamera.setParameters(parameters);
@@ -689,7 +723,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 				mHandler.removeCallbacks(mPostPicture);
 				mHandler.postDelayed(mPostPicture, 5000);
 			}
-			else if(mSettings.mMode == Mode.BROADCASTRECEIVER || mSettings.mMode == Mode.BACKGROUND)
+			else if(mSettings.mMode == Mode.BACKGROUND)
 			{
 				// from takehiddenpicture
 				TakePhoto();
@@ -708,6 +742,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		shutDownCamAsync();
 	}
 	
+	// reinitialize everything
 	public void RestartCamera()
 	{
 		offline(false);
@@ -721,6 +756,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		}
 
 		tryOpenCam();
+		if(mCamera != null)
+			mSettings.SetCameraParameters(mCamera);
 		
 		online();
 	}
@@ -971,8 +1008,11 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	{
 		public void onPictureTaken(byte[] data, Camera camera)
 		{
+			Date date = new Date(); // first store current time!
+
 			Log.i("MobileWebCam", "mPostPicture.photoCallback");
 			
+			WorkImage work = null;
 			Camera.Size size = null;
 			if(mCamera != null)
 			{
@@ -981,7 +1021,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			}
 			if(size != null)
 			{
-				final WorkImage work = new WorkImage(mActivity, Preview.this, data, size);
+				work = new WorkImage(mActivity, Preview.this, data, size, date);
 				MobileWebCam.gPictureCounter++;
 				
 				UpdateText();
@@ -1032,12 +1072,23 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 					}
 				}
 			}
+			
+			if(mCamera != null && ControlReceiver.takePicture())
+			{
+				// PHOTO intent requested several pictures!
+				mCamera.takePicture(shutterCallback, null, photoCallback);
+				Log.i("MobileWebCam", "another takePicture done");
+				return; // do not yet shut camera down!
+			}
 
 			if(!mSettings.mShutterSound)
 			{
 				AudioManager mgr = (AudioManager)mActivity.getSystemService(Context.AUDIO_SERVICE);
 				mgr.setStreamMute(AudioManager.STREAM_SYSTEM, false);
 			}
+			
+//			if(work != null)
+//				new Thread(work).start();
 		}
 	};
 
@@ -1106,6 +1157,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		MobileWebCam.gInSettings = false;
 	}
 	
+	// set camera back online - start to take pictures now
 	public void online()
 	{
 		if(mSettings.mMode == Mode.NORMAL)
@@ -1123,12 +1175,14 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			time.setTimeInMillis(System.currentTimeMillis());
 			alarmMgr.set(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pendingIntent);
 		}
-		else if(mSettings.mMode == Mode.BROADCASTRECEIVER)
-		{
-			CustomReceiverService.start(mActivity);
-		}
+
+		CustomReceiverService.start(mActivity);
+		
+		if(mCamera != null)
+			mSettings.SetCameraParameters(mCamera);
 	}
 	
+	// camera goes offline - if wanted upload offline picture now
 	public void offline(boolean setofflinepicture)
 	{
 		mHandler.removeCallbacks(mPostPicture);
@@ -1140,10 +1194,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			PendingIntent pendingIntent = PendingIntent.getBroadcast(mActivity, 0, intent, 0);
 			alarmMgr.cancel(pendingIntent);
 		}
-		else if(mSettings.mMode == Mode.BROADCASTRECEIVER)
-		{
-			CustomReceiverService.stop(mActivity);
-		}
+
+		CustomReceiverService.stop(mActivity);
 		
 		if(setofflinepicture)
 		{
@@ -1211,7 +1263,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						size = parameters.getPictureSize();
 				}
 				
-				final WorkImage work = new WorkImage(mActivity, this, data, size);
+				final WorkImage work = new WorkImage(mActivity, this, data, size, new Date());
 				mHandler.post(work);
 	    	}
     	}
@@ -1316,15 +1368,15 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	@Override
 	public void JobFinished()
 	{
+		if(ControlReceiver.PhotoCount.get() > 0)
+			return; // still pictures to do!
+		
         mActivity.releaseLocks();
 		BackgroundPhoto.releaseWakeLocks();
 
 		SharedPreferences prefs = mActivity.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
-        String v = prefs.getString("camera_mode", "1");
-        if(v.length() < 1 || v.length() > 9)
-        	v = "1";
-        PhotoSettings.Mode mode = Mode.values()[Integer.parseInt(v)];
-		if(mode == Mode.BACKGROUND || mode == Mode.BROADCASTRECEIVER)
+        PhotoSettings.Mode mode = PhotoSettings.getCamMode(prefs);
+		if(mode == Mode.BACKGROUND)
 		{
 			if(!MobileWebCam.gIsRunning)
 				mActivity.finish();

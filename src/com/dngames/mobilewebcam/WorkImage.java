@@ -25,6 +25,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.IllegalFormatException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /*import magick.ColorspaceType;
 import magick.CompositeOperator;
@@ -48,6 +51,9 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Paint.Align;
@@ -70,19 +76,21 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Debug;
+import android.os.Looper;
 
-public class WorkImage implements Runnable, LocationListener
+public class WorkImage implements Runnable
 {
 	private WorkImage()
 	{
 	}
 
-	public WorkImage(Context c, ITextUpdater tu, byte[] data, Camera.Size s)
+	public WorkImage(Context c, ITextUpdater tu, byte[] data, Camera.Size s, Date date)
 	{
 		mTextUpdater = tu;
 		mContext = c;
 		mData = data;
 		size = s;
+		mDate = date;
 		
 		mSettings = new PhotoSettings(c);
 	}
@@ -90,6 +98,7 @@ public class WorkImage implements Runnable, LocationListener
 	private ITextUpdater mTextUpdater = null;
 	private Context mContext = null;
 	private byte[] mData = null;
+	private Date mDate = null;
 	private static Bitmap gBmp = null;	
 	private Camera.Size size = null;
 	private PhotoSettings mSettings = null;
@@ -361,7 +370,11 @@ public class WorkImage implements Runnable, LocationListener
         System.gc();
         
         return tmp;
-	} */	
+	} */
+	
+	private MyLocationListener mLocationListener = new MyLocationListener();
+	protected Looper mLocationLooper = null;
+	protected TimerTask mLocationTimout = null;
 	
 	@Override
 	public void run()
@@ -381,38 +394,40 @@ public class WorkImage implements Runnable, LocationListener
 	    	locationManager = (LocationManager)mContext.getSystemService(android.content.Context.LOCATION_SERVICE);
 	    	if(locationManager != null)
 	    	{
-		    	geocoder = new Geocoder(mContext);
-		
-		    	gLocation = null;
-		    	
-		    	Location location = null;
-		    	try
-		    	{
-		    		location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-		    	}
-		    	catch(IllegalArgumentException e)
-		    	{
-		    		e.printStackTrace();
-		    	}
-		    	if (location != null)
-		    	{
-		    		this.onLocationChanged(location);
-		        }
-				else
+		       	geocoder = new Geocoder(mContext);
+		       	
+				gLocation = null;
+				
+				// give some time to find gps location
+				// but make it finish after 1 minute maximum
+				mLocationTimout = new TimerTask()
 				{
-		    		location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-		    		if (location != null)
-		    		{
-		    			this.onLocationChanged(location);
-					}
-				}
-		
-		       	locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60000, 50, this);
+					@Override
+					public void run() {	mLocationListener.UseLastLocation(); }
+				};
+				new Timer().schedule(mLocationTimout, 60 * 1000);
 	    	}
 	    	else
 	    	{
-	    		gLocation = null;
+	    		gLocation = "Unknown";
+		    	MobileWebCam.LogE("Error: Unable to get any (gps) location - no service!");
 	    	}
+
+	    	new Thread()
+				{
+					@Override
+					public void run()
+					{
+						Looper.prepare();
+						
+						mLocationLooper = Looper.myLooper();
+
+				       	locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60 * 1000, 50.0f, mLocationListener);
+				       	locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 60 * 1000, 100.0f, mLocationListener);
+						
+						Looper.loop();
+					}
+				}.start();
 		}
 		
 		// something left here from before?
@@ -579,34 +594,47 @@ public class WorkImage implements Runnable, LocationListener
 			}
 
 			// TODO: do night detection on own downsampled image from mData to 100x100 for all sizes if! gBmp == null
-			if(mSettings.mNightAutoFlash)
+			if(ControlReceiver.PhotoCount.get() <= 0) // only for the last of a burst detect and change settings
 			{
-				// detect if flash is required
-				boolean imagedark = isNightImage(gBmp);
-				if(mSettings.mCameraFlash != imagedark)
+				if(mSettings.mNightStartTime.equals(mSettings.mNightEndTime))
 				{
-					mSettings.setCameraFlash(imagedark);
-					// take next picture with changed flash!
-					MobileWebCam.LogI("FLASH auto changed");
+					if(mSettings.mNightAutoFlash || mSettings.mNightAutoBrightness)
+					{
+						// detect if flash is required
+						boolean imagedark = isNightImage(gBmp);
+						MobileWebCam.LogI("Dark image: " + imagedark);
+						if(mSettings.mNightAutoFlash && mSettings.mNightAutoFlashEnabled != imagedark)
+						{
+							mSettings.setCameraFlash(imagedark, true);
+							// take next picture with changed flash!
+							MobileWebCam.LogI("flash auto changed");
+						}
+						else if(mSettings.mNightAutoBrightness && mSettings.mNightAutoBrightnessEnabled != imagedark)
+						{
+							// take next picture with changed settings if image dark!
+							mSettings.setCameraAutoNightBrightness(imagedark);
+							MobileWebCam.LogI("brightness auto changed");
+						}
+					}
 				}
-			}
-			else if(mSettings.mNightDetect)
-			{
-				if(isNightImage(gBmp) && !ignoreinactivity)
+
+				if(mSettings.mNightDetect)
 				{
-					Preview.mPhotoLock.set(false);
-					MobileWebCam.LogI("Dropping night image.");
-					Log.i("MobileWebCam", "PhotoLock released!");
-					mTextUpdater.JobFinished();
-					if(locationManager != null)
-						locationManager.removeUpdates(this);
-					gBmp.recycle();
-					gBmp = null;
-					return;
+					if(isNightImage(gBmp) && !ignoreinactivity)
+					{
+						// drop dark images
+						Preview.mPhotoLock.set(false);
+						MobileWebCam.LogI("Dropping night image.");
+						Log.i("MobileWebCam", "PhotoLock released!");
+						mTextUpdater.JobFinished();
+						gBmp.recycle();
+						gBmp = null;
+						return;
+					}
 				}
 			}
 			
-			boolean rotate = mSettings.mForcePortraitImages && !mSettings.mFrontCamera;
+			boolean rotate = mSettings.mForcePortraitImages;// && !mSettings.mFrontCamera;
 			if(!rotate && Preview.gOrientation != -1 && mSettings.mAutoRotateImages)
 			{
 				if((Preview.gOrientation > 315 || Preview.gOrientation < 45) || (Preview.gOrientation > 135 && Preview.gOrientation < 225))
@@ -639,6 +667,16 @@ public class WorkImage implements Runnable, LocationListener
 			
 			if(old != gBmp && !rotate && gBmp != null && mutable)
 			{
+				if(mSettings.mFlipImages)
+				{
+					// some front camera images are flipped upside down ...
+					Canvas canvas = new Canvas(gBmp);
+					Matrix matrix = new Matrix();
+					matrix.preScale(-1.0f, 1.0f);
+					matrix.postTranslate(old.getWidth(), 0);
+					canvas.drawBitmap(old, matrix, new Paint());
+				}
+				
 				// try to save some memory except when rotate is needed -> then release there later
 				old.recycle();
 				old = null;
@@ -646,16 +684,6 @@ public class WorkImage implements Runnable, LocationListener
 
 			if(gBmp != null)
 			{
-				if(mSettings.mFlipImages && mutable)
-				{
-					// some front camera images are flipped upside down ...
-					Canvas canvas = new Canvas(gBmp);
-					Matrix matrix = new Matrix();
-					matrix.preScale(-1f, 1f);
-					matrix.postTranslate(gBmp.getWidth(), 0);
-					canvas.drawBitmap(gBmp, matrix, new Paint());
-				}
-			
 				if(size != null)
 					Log.v("MobileWebCam", "Picture size: " + size.width + "x" + size.height + " -> " + gBmp.getWidth() + "x" + gBmp.getHeight());
 			}
@@ -673,28 +701,6 @@ public class WorkImage implements Runnable, LocationListener
 				return;*/
 			}
 			
-			if(mSettings.mStoreGPS || mSettings.mImprintGPS)
-			{
-				int cnt = 0;
-				// wait until location got
-				while(gLocation == null && cnt < 60)
-				{
-					try
-					{
-						Thread.sleep(1000);
-					}
-					catch (InterruptedException e)
-					{
-						e.printStackTrace();
-					}
-					cnt++;
-				}
-				if(locationManager != null)
-					locationManager.removeUpdates(this);
-				else
-					MobileWebCam.LogE("Error: Unable to get last (gps) location - timeout!");					
-			}
-
 			if(gBmp != null && mutable)
 			{
 				float scale = gBmp.getWidth() / 320.0f;
@@ -704,13 +710,59 @@ public class WorkImage implements Runnable, LocationListener
 				else if(mSettings.mImageSize == 0)
 					textsize += 1.0f;
 				
-				Canvas canvas = new Canvas(gBmp);	
+				Canvas canvas = new Canvas(gBmp);
+				Paint p = new Paint();				
+				
+				if(mSettings.mNightIRLight)
+				{
+			        ColorMatrix cm = new ColorMatrix();
+// TODO: configurable?
+			        float contrast = 5f;
+			        float brightness = -8f;
+			        float green = 0.25f;
+			        cm.set(new float[]
+			        	{
+			        		contrast,	0,					0,			0,			brightness,
+			        		green,		green + contrast,	green,		green,		brightness,
+			        		0,			0,					contrast,	0,			brightness,
+			        		0,			0,					0,			1,			0
+			        	});
+			        p.setColorFilter(new ColorMatrixColorFilter(cm));
+					canvas.drawBitmap(gBmp, 0, 0, p);
+					
+					p.reset();
+				}
+				else if(mSettings.mNightAutoBrightness && mSettings.mNightAutoBrightnessEnabled)
+				{
+			        ColorMatrix cm = new ColorMatrix();
+			        float contrast = mSettings.mNightAutoContrastFactor;
+			        float brightness = mSettings.mNightAutoBrightnessAdd;
+			        float green = mSettings.mNightAutoGreenFactor;
+			        cm.set(new float[]
+			        	{
+			        		contrast,	0,					0,			0,			brightness,
+			        		green,		green + contrast,	green,		green,		brightness,
+			        		0,			0,					contrast,	0,			brightness,
+			        		0,			0,					0,			1,			0
+			        	});
+			        p.setColorFilter(new ColorMatrixColorFilter(cm));
+					canvas.drawBitmap(gBmp, 0, 0, p);
+					
+					p.reset();
+				}
 
 				if(rotate && old != null)
 				{
 					Matrix m = new Matrix();
 					m.setRotate(90, oldw / 2, oldh / 2);
 					m.postTranslate(gBmp.getWidth() / 2 - oldw / 2, gBmp.getHeight() / 2 - oldh / 2);
+					if(mSettings.mFlipImages)
+					{
+						// some front camera images are flipped upside down ...
+						m.postScale(1.0f, -1.0f);
+						m.postTranslate(0, oldh);
+					}
+					
 					canvas.drawBitmap(old, m, null); //gBmp.getWidth() / 2 - old.getHeight() / 2, gBmp.getHeight() / 2 - old.getWidth() / 2, null);
 					
 					if(old != gBmp)
@@ -723,11 +775,23 @@ public class WorkImage implements Runnable, LocationListener
 				if(mSettings.mImprintPicture && mSettings.mImprintBitmap != null)
 				{
 					Rect src = new Rect(0, 0, mSettings.mImprintBitmap.getWidth(), mSettings.mImprintBitmap.getHeight());
-					Rect dst = new Rect(0, 0,canvas.getWidth(), canvas.getHeight());
+					Rect dst = new Rect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+					if(mSettings.mImprintPictureURL.length() > 0)
+					{
+						if(mSettings.mImprintPictureRefresh)
+						{
+							// reload image!
+							// slow!
+							mSettings.DownloadImprintBitmap();
+						}
+					}
+
+					if(!mSettings.mImprintPictureStretch)
+						dst = new Rect(mSettings.mImprintPictureX, mSettings.mImprintPictureY, mSettings.mImprintBitmap.getWidth(), mSettings.mImprintBitmap.getHeight());
+					
 					canvas.drawBitmap(mSettings.mImprintBitmap, src, dst, null);
 				}
-				
-				Paint p = new Paint();
 				
 				if(mSettings.mTextFontname.length() > 0)
 				{
@@ -742,6 +806,7 @@ public class WorkImage implements Runnable, LocationListener
 				{
 					Date date = new Date();
 					SimpleDateFormat sdf = null;
+					boolean formaterror = false;
 					try
 					{
 						sdf = new SimpleDateFormat(mSettings.mImprintDateTime);
@@ -749,13 +814,14 @@ public class WorkImage implements Runnable, LocationListener
 					catch(IllegalArgumentException e)
 					{
 						MobileWebCam.LogE(e.toString());
-						sdf = new SimpleDateFormat("format error! yyyy/MM/dd   HH:mm:ss");
+						sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+						formaterror = true;
 					}
 					
         			String txt = "";
         			try
         			{
-        				txt = sdf.format(date); 
+        				txt = (formaterror ? "format error! " : "") + sdf.format(date); 
         			}
         			catch(IllegalArgumentException e)
         			{
@@ -772,15 +838,33 @@ public class WorkImage implements Runnable, LocationListener
 				if(mSettings.mImprintStatusInfo.length() > 0)
 				{
 					String txt = getBatteryInfo(mContext, mSettings.mImprintStatusInfo);
-        			DrawText(canvas, p, textsize, mSettings.mDateTimeFontScale, txt, (float)mSettings.mStatusInfoX, (float)mSettings.mStatusInfoY, mSettings.mStatusInfoBackgroundLine, mSettings.mStatusInfoBackgroundColor, mSettings.mDateTimeShadowColor, mSettings.mDateTimeColor, mSettings.mStatusInfoAlign);
+        			DrawText(canvas, p, textsize, mSettings.mStatusInfoFontScale, txt, (float)mSettings.mStatusInfoX, (float)mSettings.mStatusInfoY, mSettings.mStatusInfoBackgroundLine, mSettings.mStatusInfoBackgroundColor, mSettings.mStatusInfoShadowColor, mSettings.mStatusInfoColor, mSettings.mStatusInfoAlign);
 				}
 				
 				if(mSettings.mImprintGPS)
 				{
-        			String txt = String.format("%10f, %10f", gLatitude, gLongitude);
+					// now unfortunately we have to wait for a location!
+/*					int cnt = 0;
+					try
+					{
+						while(gLocation == null && cnt++ < 60)
+						{
+							Log.w("MobileWebCam", "wait for location " + cnt);
+							Thread.sleep(1000);
+						}
+		            }
+					catch (InterruptedException e)
+		            {
+		                e.printStackTrace();
+		            }*/
+					if(gLocation == null)
+						mLocationListener.UseLastLocation();
+					locationManager.removeUpdates(mLocationListener);					
+					
+        			String txt = String.format(Locale.US, "%10f, %10f", gLatitude, gLongitude);
         			if(mSettings.mImprintLocation && gLocation != null)
         				txt = gLocation;
-        			DrawText(canvas, p, textsize, mSettings.mDateTimeFontScale, txt, (float)mSettings.mGPSX, (float)mSettings.mGPSY, mSettings.mGPSBackgroundLine, mSettings.mDateTimeBackgroundColor, mSettings.mDateTimeShadowColor, mSettings.mDateTimeColor, mSettings.mGPSAlign);
+        			DrawText(canvas, p, textsize, mSettings.mGPSFontScale, txt, (float)mSettings.mGPSX, (float)mSettings.mGPSY, mSettings.mGPSBackgroundLine, mSettings.mGPSBackgroundColor, mSettings.mGPSShadowColor, mSettings.mGPSColor, mSettings.mGPSAlign);
 				}
 
 				Log.v("MobileWebCam", "Workimage: imprint done");
@@ -895,18 +979,16 @@ public class WorkImage implements Runnable, LocationListener
 			// now send picture
 			if(!Preview.sharePictureNow)
 			{
-				MobileWebCam.LogI("Picture taken ... uploading now!");
+				MobileWebCam.LogI("Picture " + MobileWebCam.gPictureCounter + " taken ... uploading now!");
 				
 				if(mSettings.mFTPPictures && (MobileWebCam.gPictureCounter % mSettings.mFTPFreq) == 0)
-					new PhotoService.UploadFTPPhotoTask(mContext, mTextUpdater, mSettings).execute(mData);
+					new PhotoService.UploadFTPPhotoTask(mContext, mTextUpdater, mSettings, mDate).execute(mData);
 				if(mSettings.mStorePictures && !PhotoService.SaveLocked.get() && (MobileWebCam.gPictureCounter % mSettings.mStoreFreq) == 0)
-					new PhotoService.SavePhotoTask(mContext, mTextUpdater, mSettings).execute(mData);
-				
-				ControlReceiver.Triggered = false;
+					new PhotoService.SavePhotoTask(mContext, mTextUpdater, mSettings, mDate).execute(mData);
 			}
 			else
 			{
-				MobileWebCam.LogI("Picture taken ... sharing now!");
+				MobileWebCam.LogI("Picture " + MobileWebCam.gPictureCounter + " taken ... sharing now!");
 				
 				Preview.sharePicture(mContext, mSettings, mData);
 			}
@@ -937,6 +1019,13 @@ public class WorkImage implements Runnable, LocationListener
 	    {
 	    	rectX = 0;
 		    rectWidth = canvas.getWidth();
+	    }
+	    else
+	    {
+	    	if(align == Paint.Align.CENTER)
+	    		rectX -= textWidth / 2;
+	    	else if(align == Paint.Align.RIGHT)
+	    		rectX -= textWidth;
 	    }
 	    
 	    p.setColor(bgcolor);
@@ -1011,58 +1100,116 @@ public class WorkImage implements Runnable, LocationListener
 	}
 
 	public static String gLocation = null;
+	private static float gLocationAccuracy = 0.0f;
 	public static double gLatitude;
 	public static double gLongitude;
 	
-	@Override
-	public void onLocationChanged(Location location)
+	private class MyLocationListener implements LocationListener
 	{
-		try
+		// still no location found ... use something old
+		private void UseLastLocation()
 		{
-			List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-			if(!addresses.isEmpty())
-			{
-				gLocation = "";
-				if(addresses.get(0).getAddressLine(1) != null)
-					gLocation += addresses.get(0).getAddressLine(1) + ", ";
-				gLocation += addresses.get(0).getAddressLine(0);
-			}
+			mLocationTimout.cancel();
+			
+			locationManager.removeUpdates(this);
 
+			if(gLocation == null)
+			{
+		    	Location location = null;
+		    	try
+		    	{
+		    		location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+		    	}
+		    	catch(IllegalArgumentException e)
+		    	{
+		    		e.printStackTrace();
+		    	}
+		    	if (gLocation == null && location != null)
+		    	{
+		    		SetLocation(location);
+		        }
+				else
+				{
+		    		location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+		    		if (gLocation == null && location != null)
+		    		{
+		    			SetLocation(location);
+					}
+				}
+		
+		    	MobileWebCam.LogE("Error: Unable to get current (gps) location - timeout! Using last ...");
+			}
+		}
+		
+		// store the given location for the images and infos
+		private void SetLocation(Location location)
+		{
 			gLatitude = location.getLatitude();
 			gLongitude = location.getLongitude();
-
-//			GeoPoint point = new GeoPoint(latitude, longitude);
-//			mapController.animateTo(point);
-        
-		}
-		catch(IllegalArgumentException e)
-		{
-			e.printStackTrace();
 			gLocation = "Unknown";
+			gLocationAccuracy = location.getAccuracy();
+			try
+			{
+				if(mSettings.mImprintLocation)
+				{
+					List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+					if(!addresses.isEmpty())
+					{
+						gLocation = "";
+						if(addresses.get(0).getAddressLine(1) != null)
+							gLocation += addresses.get(0).getAddressLine(1) + ", ";
+						gLocation += addresses.get(0).getAddressLine(0);
+					}
+				}
+	
+	//			GeoPoint point = new GeoPoint(latitude, longitude);
+	//			mapController.animateTo(point);
+	        
+			}
+			catch(IllegalArgumentException e)
+			{
+				e.printStackTrace();
+				gLocation = "Unknown";
+			}
+			catch(IOException e)
+			{
+				if(e.getMessage() != null)
+					MobileWebCam.LogE("Could not get Geocoder data: " + e.getMessage());
+				else
+					MobileWebCam.LogE("Could not get Geocoder data!");
+				gLocation = "Unknown";
+			}
 		}
-		catch(IOException e)
+		
+		@Override
+		public void onLocationChanged(Location location)
 		{
-			MobileWebCam.LogE("Could not get Geocoder data!");
-			Log.e("MobileWebCam", "Could not get Geocoder data!", e);
-			gLocation = "Unknown";
+			mLocationTimout.cancel();
+			
+			mLocationLooper.quit();		
+			
+			Log.i("MobileWebCam", "got location: " + location.getAccuracy());
+			
+			if(gLocation == null || location.getAccuracy() < gLocationAccuracy || gLocationAccuracy == 0.0f);
+				SetLocation(location);
 		}
-	}
-
-	@Override
-	public void onProviderDisabled(String provider) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void onProviderEnabled(String provider) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void onStatusChanged(String provider, int status, Bundle extras) {
-		// TODO Auto-generated method stub
-		
+	
+		@Override
+		public void onProviderDisabled(String provider) {
+			// TODO Auto-generated method stub
+			
+		}
+	
+		@Override
+		public void onProviderEnabled(String provider) {
+			// TODO Auto-generated method stub
+			
+		}
+	
+		@Override
+		public void onStatusChanged(String provider, int status, Bundle extras)
+		{
+			Log.i("MobileWebCam", "GPS " + provider + " Status: " + status);
+		}
 	}
 }

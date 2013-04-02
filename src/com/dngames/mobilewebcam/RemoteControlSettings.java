@@ -51,7 +51,7 @@ public class RemoteControlSettings extends PreferenceActivity implements OnShare
 	        @Override
 	        public boolean onPreferenceClick(Preference preference)
 	        {
-	        	String settings = PhotoSettings.DumpSettings(prefs);
+	        	String settings = PhotoSettings.DumpSettings(RemoteControlSettings.this, prefs);
 	        	
 		       	 Intent intent = new Intent(Intent.ACTION_SEND);
 		       	 intent.addCategory(Intent.CATEGORY_DEFAULT);
