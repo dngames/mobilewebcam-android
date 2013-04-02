@@ -1,31 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <PreferenceScreen
-        xmlns:android="http://schemas.android.com/apk/res/android">
+	xmlns:android="http://schemas.android.com/apk/res/android">
 
 	<PreferenceCategory
 		android:title="Info">
+
+		<PreferenceScreen
+			android:key="info_open"
+			android:title="Help"
+			android:summary="Support forum thread at xda developers"/>
 	
 		<PreferenceScreen
-		    android:key="info_open"
-			android:title="Help"
-			android:summary="Support forum thread at xda developers"
-			/>
-
- 		<PreferenceScreen
-		    android:key="market_open"
+			android:key="market_open"
 			android:title="Rate and recommend"
-			android:summary="Open Google Play ... This really helps for motivation. Thanks!"
-			/>
-
- 		<CheckBoxPreference
-		    android:key="disable_ads"
-			android:title="Disable ads"
-			android:summary="Save traffic. Please honor the amount of work I put into this and please do not forget to rate the app!"
-			android:defaultValue="false"
-			/>
- 				
-  </PreferenceCategory>
+			android:summary="Open Google Play ... This really helps for motivation. Thanks!"/>
+>
+				
+ 	</PreferenceCategory>
     	
 	<PreferenceCategory
 		android:title="System settings">
@@ -34,38 +26,41 @@
 			android:key="no_messages"
 			android:title="No status"
 			android:summary="Disable the small status messages for picture upload."
-			android:defaultValue="false"
-			/>
+			android:defaultValue="false"/>
 
-	    <CheckBoxPreference
+		<CheckBoxPreference
 			android:key="fullscreen"
 			android:title="Fullscreen mode"
 			android:summary="Fullscreen camera preview does not work on all devices. App restart required! Reinstall or clear app data if not working!"
-			android:defaultValue="false"
-			/>
+			android:defaultValue="false"/>
 					
-	    <CheckBoxPreference
+		<CheckBoxPreference
 			android:key="shutter"
 			android:title="Shutter sound"
 			android:summary="Enable the Android shutter sound when taking pictures. Disable does not work on all devices."
-			android:defaultValue="true"
-			/>
+			android:defaultValue="true"/>
+
+	    <EditTextPreference
+			android:key="cam_openeddelay"
+			android:title="Wait for Camera"
+			android:summary="Delay picture for this many milliseconds in background modes. Give the camera time to take the picture after opening! Required on many devices to avoid overexposed shots."
+			android:defaultValue="200"
+			android:hint="1000"
+			android:numeric="integer"/>	    	    
 	
-	    <CheckBoxPreference
+		<CheckBoxPreference
 			android:key="full_wakelock"
 			android:title="Keep screen on"
 			android:summary="Some devices will need to keep the screen on or the app will fall to sleep."
-			android:defaultValue="true"
-			/>
+			android:defaultValue="true"/>
 			
 		<CheckBoxPreference
 			android:key="autostart"
 			android:title="Autostart"
 			android:summary="Start the app automatically after bootup. Use if you need reboot function or have an unstable device."
-			android:defaultValue="false"
-			/>
+			android:defaultValue="false"/>
     
-  </PreferenceCategory>
+	</PreferenceCategory>
 
 	<PreferenceCategory
 		android:title="Backup">
@@ -73,15 +68,13 @@
 		<PreferenceScreen
 			android:key="backup_settings"
 			android:title="Backup settings"
-			android:summary="Dump settings config file to /sdcard/MobileWebCam/config.txt"
-			/>
+			android:summary="Dump settings config file to /sdcard/MobileWebCam/config.txt"/>
 
-	    <PreferenceScreen
+		<PreferenceScreen
 			android:key="read_settings"
 			android:title="Restore setting"
-			android:summary="Read settings config file from /sdcard/MobileWebCam/config.txt"
-			/>
+			android:summary="Read settings config file from /sdcard/MobileWebCam/config.txt"/>
 					
-  </PreferenceCategory>
+	</PreferenceCategory>
 		
 </PreferenceScreen>

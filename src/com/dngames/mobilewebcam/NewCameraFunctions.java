@@ -115,6 +115,56 @@ public class NewCameraFunctions
 		if(mNewCameraAvailable)
 			NewPictureSizesWrapper.setWhiteBalance(params, balance);
 	}
+
+	public static List<String> getSupportedSceneModes(Camera.Parameters params)
+	{
+		if(mNewCameraAvailable)
+			return NewPictureSizesWrapper.getSupportedSceneModes(params);
+		
+		return null;
+	}
+	
+	public static void setSceneMode(Camera.Parameters params, String mode)
+	{
+		if(mNewCameraAvailable)
+			NewPictureSizesWrapper.setSceneMode(params, mode);
+	}
+	
+	public static List<String> getSupportedColorEffects(Camera.Parameters params)
+	{
+		if(mNewCameraAvailable)
+			return NewPictureSizesWrapper.getSupportedColorEffects(params);
+		
+		return null;
+	}
+	
+	public static void setColorEffect(Camera.Parameters params, String mode)
+	{
+		if(mNewCameraAvailable)
+			NewPictureSizesWrapper.setColorEffect(params, mode);
+	}
+	
+	public static int getMinExposureCompensation(Camera.Parameters params)
+	{
+		if(mNewCameraAvailable)
+			return NewCameraWrapper.getMinExposureCompensation(params);
+		
+		return 0;
+	}
+	
+	public static int getMaxExposureCompensation(Camera.Parameters params)
+	{
+		if(mNewCameraAvailable)
+			return NewCameraWrapper.getMaxExposureCompensation(params);
+		
+		return 0;
+	}
+	
+	public static void setExposureCompensation(Camera.Parameters params, int value)
+	{
+		if(mNewCameraAvailable)
+			NewCameraWrapper.setExposureCompensation(params, value);
+	}	
 	
 	public static boolean isFlashSupported(Camera.Parameters params)
 	{

@@ -61,4 +61,52 @@ public class NewPictureSizesWrapper
 		{
 		}
 	}	
+
+	public static List<String> getSupportedSceneModes(Camera.Parameters params)
+	{
+		try
+		{
+			return params.getSupportedSceneModes();
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+		
+		return null;
+	}
+	
+	public static void setSceneMode(Camera.Parameters params, String mode)
+	{
+		try
+		{
+			params.setSceneMode(mode);
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+	}
+	
+	public static List<String> getSupportedColorEffects(Camera.Parameters params)
+	{
+		try
+		{
+			return params.getSupportedColorEffects();
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+		
+		return null;
+	}
+	
+	public static void setColorEffect(Camera.Parameters params, String mode)
+	{
+		try
+		{
+			params.setColorEffect(mode);
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+	}
 }

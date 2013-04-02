@@ -35,7 +35,11 @@ import java.net.SocketException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -70,6 +74,7 @@ import android.graphics.Rect;
 import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.ExifInterface;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Debug;
 import android.os.Environment;
@@ -82,7 +87,7 @@ import android.view.SurfaceView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-public class PhotoService// implements SurfaceHolder.Callback
+public class PhotoService
 {
 	private Handler mHandler = new Handler();
 	
@@ -94,20 +99,15 @@ public class PhotoService// implements SurfaceHolder.Callback
 
 	private static RelativeLayout mRelative = null;
 	
-//***	private CenteredPreview mPreview = null;
-	
 	public PhotoService(Context c, ITextUpdater tu)
 	{
 		mContext = c;
 		mTextUpdater = tu;
 		
 		mSettings = new PhotoSettings(mContext);
-		
-//***		mPreview = new CenteredPreview(mContext);
 	}
 	
 	public static Camera mCamera = null;
-//	public static SurfaceView mSurface = null;
 	
 	public static boolean CheckHiddenCamInit()
 	{
@@ -131,10 +131,13 @@ public class PhotoService// implements SurfaceHolder.Callback
 	
 	public void TakePicture()
 	{
-		Log.i("MobileWebCam", "open");
+		Log.i("MobileWebCam", "TakePicture");
 		mCamera = null;
 		if(Preview.mPhotoLock.getAndSet(true))
+		{
+			Log.w("MobileWebCam", "Photo locked!");
 			return;
+		}
 		Preview.mPhotoLockTime = System.currentTimeMillis();
 		
 		try
@@ -223,24 +226,10 @@ public class PhotoService// implements SurfaceHolder.Callback
 	        					}
 	        				}
 	        			}
-		        		mCamera.setParameters(params);
 	        		}
-				}
-				
-				if(NewCameraFunctions.isZoomSupported(params))
-					NewCameraFunctions.setZoom(params, mSettings.mZoom);
-				if(NewCameraFunctions.getSupportedWhiteBalance(params) != null)
-					NewCameraFunctions.setWhiteBalance(params, mSettings.mWhiteBalance);
-				if(NewCameraFunctions.isFlashSupported(params))
-					NewCameraFunctions.setFlash(params, mSettings.mCameraFlash ? Camera.Parameters.FLASH_MODE_ON : Camera.Parameters.FLASH_MODE_OFF);
-				try
-				{
-					mCamera.setParameters(params);
-				}
-				catch(RuntimeException e)
-				{
-					e.printStackTrace();
-				}
+				}				
+				mSettings.SetCameraParameters(params);
+        		mCamera.setParameters(params);
 			}
 			
 			MobileWebCam.gLastMotionKeepAliveTime = System.currentTimeMillis();			
@@ -258,55 +247,15 @@ public class PhotoService// implements SurfaceHolder.Callback
 			{
 				MobileWebCam.LogE("takePicture failed!");
 				e.printStackTrace();
+				Preview.mPhotoLock.set(false);
 			}
 		}
 		else
 		{
 			mTextUpdater.Toast("Error: unable to open camera", Toast.LENGTH_SHORT);
 			mTextUpdater.JobFinished();
-		}
-		
-/* not working		Log.i("MobileWebCam", "TakePicture");
-		
-		AudioManager mgr = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
-		mgr.setStreamMute(AudioManager.STREAM_SYSTEM, true);
-
-//		if(mSurface == null)
-		{
-//			mSurface = new SurfaceView(mContext);
-//			SurfaceHolder holder = mSurface.getHolder();
-//			holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-			
-			Log.v("MobileWebCam", "mContext = " + mContext.toString());
-			mRelative = new RelativeLayout(mContext);
-			Log.v("MobileWebCam", "mRelative = " + mRelative.toString());
-			mRelative.addView(mPreview);
-			Log.v("MobileWebCam", "addView = " + mPreview.toString());
-			mRelative.measure(200, 200);
-			mRelative.layout(0, 0, 200, 200);
-			try
-			{
-				Bitmap tmp = Bitmap.createBitmap(10, 10, Bitmap.Config.RGB_565);
-				Canvas canvas = new Canvas(tmp);
-				mRelative.draw(canvas);
-			}
-			catch(OutOfMemoryError e)
-			{
-				e.printStackTrace();
-			}
-		}
-
-		if(mCamera != null)
-		{
-			Log.i("MobileWebCam", "takePicture");
-//			if(mSettings.mAutoFocus)
-//				mCamera.autoFocus(autofocusCallback);
-//			else
-			
-			mCamera.setPreviewCallback(null);
-			mCamera.takePicture(shutterCallback, null, photoCallback);
-			Log.i("MobileWebCam", "takePicture done");
-		} */		
+			Preview.mPhotoLock.set(false);
+		}		
 	}
 	
 	Camera.AutoFocusCallback autofocusCallback = new Camera.AutoFocusCallback() {
@@ -345,34 +294,43 @@ public class PhotoService// implements SurfaceHolder.Callback
 	{
 		public void onPictureTaken(byte[] data, Camera camera)
 		{
-			boolean nowork = false;
+			Date date = new Date(); // first store current time!
+			
+			WorkImage work = null;
+
 			Log.i("MobileWebCam", "onPictureTaken");
 			Camera.Parameters parameters = camera.getParameters();
 			Camera.Size s = parameters.getPictureSize();
 			if(s != null)
 			{
-				final WorkImage work = new WorkImage(mContext, mTextUpdater, data, s);
+				work = new WorkImage(mContext, mTextUpdater, data, s, date);
 				MobileWebCam.gPictureCounter++;
 				
 				mTextUpdater.UpdateText();
 				
 				mHandler.post(work);
-				Log.i("MobileWebCam", "work posted");
+				Log.i("MobileWebCam", "work to do");
 			}
-			else
-			{
-				nowork = true;
-			}
-			
-			AudioManager mgr = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
-			mgr.setStreamMute(AudioManager.STREAM_SYSTEM, false);
-			
+
 			if(mCamera != null)
+			{
 				mCamera.startPreview();
 			
-			Log.i("MobileWebCam", "onPictureTaken end");
-
-			final boolean finishedjob = nowork;
+				if(ControlReceiver.takePicture())
+				{
+					// PHOTO intent requested several pictures!
+					mCamera.takePicture(shutterCallback, null, photoCallback);
+					Log.i("MobileWebCam", "another takePicture done");
+					return; // do not yet shut camera down!
+				}
+			}
+			
+			Log.i("MobileWebCam", "onPictureTaken end");			
+			
+			AudioManager mgr = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
+			mgr.setStreamMute(AudioManager.STREAM_SYSTEM, false);			
+			
+			final boolean finishedjob = work == null;
 			mHandler.post(new Runnable()
 				{
 					@Override
@@ -391,30 +349,70 @@ public class PhotoService// implements SurfaceHolder.Callback
 						Log.i("MobileWebCam", "takePicture finished");
 
 						if(finishedjob)
-							mTextUpdater.JobFinished();						
+						{
+							Preview.mPhotoLock.set(false);
+							Log.v("MobileWebCam", "PhotoLock released!");
+							mTextUpdater.JobFinished();
+						}
 					}
 				});
+			
+			// now start to work on the data
+//			if(work != null)
+//				new Thread(work).start();
 		}
 	};
 	
-	public static class UploadFTPPhotoTask extends AsyncTask<byte[], String, String>
+	// base for all image storage
+	private static abstract class UploadTask extends AsyncTask<byte[], String, String>
 	{
-		private Context mContext = null;
-		private ITextUpdater mTextUpdater = null;
-		private PhotoSettings mSettings = null;
+		protected Context mContext = null;
+		protected ITextUpdater mTextUpdater = null;
+		protected PhotoSettings mSettings = null;
 		
-		public UploadFTPPhotoTask(Context c, ITextUpdater tu, PhotoSettings s)
+		protected Date mDate = null;
+		
+		protected UploadTask(Context c, ITextUpdater tu, PhotoSettings s, Date date)
 		{
 			mContext = c;
 			mTextUpdater = tu;
 			mSettings = s;
+			mDate = date;
+		}
+
+		protected void doInBackgroundBegin()
+		{
+			MobileWebCam.gUploadingCount++;
+			mTextUpdater.UpdateText();
+		}
+		
+		protected void doInBackgroundEnd(boolean getsettings)
+		{
+			MobileWebCam.gUploadingCount--;
+			
+			mTextUpdater.UpdateText();
+	
+			if(getsettings)
+				PhotoSettings.GETSettings(mContext);
+			
+			mTextUpdater.JobFinished();
+		}
+	}
+	
+
+	public static class UploadFTPPhotoTask extends UploadTask
+	{
+		static FTPClient client		= null;
+				
+		public UploadFTPPhotoTask(Context c, ITextUpdater tu, PhotoSettings s, Date date)
+		{
+			super(c, tu, s, date);
 		}
 
 		@Override
 		protected String doInBackground(byte[]... jpeg)
 		{
-			MobileWebCam.gUploadingCount++;
-			mTextUpdater.UpdateText();
+			doInBackgroundBegin();
 
 			if(mSettings.mRefreshDuration >= 10 && (mSettings.mFTPBatch == 1 || ((MobileWebCam.gPictureCounter % mSettings.mFTPBatch) == 0)))
 				publishProgress(mContext.getString(R.string.uploading, mSettings.mFTP + mSettings.mFTPDir));
@@ -427,7 +425,6 @@ ftpupload:	{
 			        BufferedInputStream buffIn = null;
 			        buffIn = new BufferedInputStream(new ByteArrayInputStream(jpeg[0]));
 			 
-					Date date = new Date();
 		            SimpleDateFormat sdf = new SimpleDateFormat ("yyyyMMddHHmmss");
 	
 		            String filename = mSettings.mDefaultname;
@@ -436,13 +433,13 @@ ftpupload:	{
 				        if(mSettings.mFTPNumbered)
 				        {
 					        if(mSettings.mFTPTimestamp)
-					        	filename = MobileWebCam.gPictureCounter + sdf.format(date) + ".jpg";
+					        	filename = MobileWebCam.gPictureCounter + sdf.format(mDate) + ".jpg";
 					        else
 					        	filename = MobileWebCam.gPictureCounter + ".jpg";
 				        }
 				        else if(mSettings.mFTPTimestamp)
 				        {
-				        	filename = sdf.format(date) + ".jpg";
+				        	filename = sdf.format(mDate) + ".jpg";
 				        }
 			        }
 			        
@@ -492,28 +489,25 @@ ftpupload:	{
 					
 					if(upload_now)
 					{
-						if(client == null)
-						{
-							client = new FTPClient();  
-							client.connect(InetAddress.getByName(mSettings.mFTP), mSettings.mFTPPort);
-							client.login(mSettings.mFTPLogin, mSettings.mFTPPassword);
-							client.changeWorkingDirectory(mSettings.mFTPDir);
-		
-							if(!client.getReplyString().contains("250"))
-						    {
-						    	publishProgress("wrong ftp response: " + client.getReplyString() + "\nAre login and dir correct?");
-						    	MobileWebCam.LogE("wrong ftp response: " + client.getReplyString() + "\nAre login and dir correct?");
-								client = null;
-						    	break ftpupload;
-						    }
+						client = new FTPClient();  
+						client.connect(InetAddress.getByName(mSettings.mFTP), mSettings.mFTPPort);
+						client.login(mSettings.mFTPLogin, mSettings.mFTPPassword);
+						client.changeWorkingDirectory(mSettings.mFTPDir);
+	
+						if(!client.getReplyString().contains("250"))
+					    {
+					    	publishProgress("wrong ftp response: " + client.getReplyString() + "\nAre login and dir correct?");
+					    	MobileWebCam.LogE("wrong ftp response: " + client.getReplyString() + "\nAre login and dir correct?");
+							client = null;
+					    	break ftpupload;
+					    }
 
-							client.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE);
+						client.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE);
 
-					        if(mSettings.mFTPPassive)
-					        	client.enterLocalPassiveMode();
-					        else
-					        	client.enterLocalActiveMode();
-						}
+				        if(mSettings.mFTPPassive)
+				        	client.enterLocalPassiveMode();
+				        else
+				        	client.enterLocalActiveMode();
 						
 				        if(mSettings.mFTPKeepPics > 0)
 				        {
@@ -533,8 +527,11 @@ ftpupload:	{
 			        		{
 								client.rename(mSettings.mDefaultname, replacename + "1.jpg");
 			        		}
-			        		catch(IOException e)
+			        		catch(Exception e)
 			        		{
+			        			if(e.getMessage() != null)
+			        				MobileWebCam.LogE(e.getMessage());
+			        			e.printStackTrace();
 			        		}
 				        }						
 						
@@ -598,8 +595,8 @@ ftpupload:	{
 						if(!mSettings.mFTPKeepConnected)
 						{
 							client.logout();
-					        client.disconnect();
-					        client = null;
+				        	client.disconnect();
+				        	client = null;
 						}
 					}
 				}
@@ -634,16 +631,15 @@ ftpupload:	{
 					}
 					client = null;
 				}
+				catch (NullPointerException e)
+				{
+					MobileWebCam.LogE("NullPointerException:\n" + e.getMessage());
+					session = null;
+					client = null;
+				}
 			}
 				
-			MobileWebCam.gUploadingCount--;
-			
-			mTextUpdater.UpdateText();
-
-			if(mSettings.mFTPBatch == 1 || ((MobileWebCam.gPictureCounter % mSettings.mFTPBatch) == 0))
-				PhotoSettings.GETSettings(mContext);
-			
-			mTextUpdater.JobFinished();											
+			doInBackgroundEnd(mSettings.mFTPBatch == 1 || ((MobileWebCam.gPictureCounter % mSettings.mFTPBatch) == 0));
 			
 			return(null);
 		}
@@ -663,12 +659,15 @@ ftpupload:	{
 		private Context mContext = null;
 		private PhotoSettings mSettings = null;
 		private ITextUpdater mTextUpdater = null;
+
+		private Date mDate = null;
 		
-		public SavePhotoTask(Context c, ITextUpdater tu, PhotoSettings s)
+		public SavePhotoTask(Context c, ITextUpdater tu, PhotoSettings s, Date date)
 		{
 			mContext = c;
 			mTextUpdater = tu;
 			mSettings = s;
+			mDate = date;
 		}
 
 		@Override
@@ -684,7 +683,7 @@ ftpupload:	{
 			
 			try
 			{
-		    	File path = new File(Environment.getExternalStorageDirectory() + "/MobileWebCam/");
+		    	File path = new File(Environment.getExternalStorageDirectory() + mSettings.mSDCardDir);
 		    	/*        if(Integer.parseInt(android.os.Build.VERSION.SDK) >= 7)
 		    	        	path = context.getExternalFilesDir(null); //***Environment.DIRECTORY_PICTURES);*/
     	    	boolean exists = path.exists();
@@ -692,9 +691,45 @@ ftpupload:	{
     	    	    exists = path.mkdirs();
     	    	if(exists)
     	    	{
-    				Date date = new Date();
-    	            SimpleDateFormat sdf = new SimpleDateFormat ("yyyyMMddHHmmss");
-    	            String filename = sdf.format(date) + ".jpg";
+    	    		final String dateformat = "yyyyMMddHHmmss"; 
+    	    		if(mSettings.mSDCardKeepPics > 0)
+    	    		{
+    	    			// delete everything except the n most recent entries
+			        	File[] files = path.listFiles(new FilenameFilter()
+			        		{
+			        			public boolean accept(File dir, String filename)
+			        			{
+			        				if(filename.endsWith(".jpg") && filename.length() == dateformat.length() + 4)
+			        				{
+			        					try
+			        					{
+			        						Long.parseLong(filename.substring(0, filename.length() - 4));
+				        					return true;
+			        					}
+			        					catch(NumberFormatException e)
+			        					{
+			        					}
+			        				}
+			        				return false;
+			        			}
+			        		});
+			        	
+			        	// sort by last file time
+			        	Arrays.sort(files, new Comparator<File>()
+			        		{
+			        	    	public int compare(File f1, File f2)
+			        	    	{
+			        	    		return Long.valueOf(f2.lastModified()).compareTo(f1.lastModified());
+			        	    	}
+			        	    });
+			        	
+			        	// delete leftovers
+			        	for(int i = mSettings.mSDCardKeepPics; i < files.length; i++)
+			        		files[i].delete();
+    	    		}
+    	    		
+    	            SimpleDateFormat sdf = new SimpleDateFormat(dateformat);
+    	            String filename = sdf.format(mDate) + ".jpg";
     	            File file = new File(path, filename);
     				try
     		        {
@@ -703,6 +738,7 @@ ftpupload:	{
     					out.flush();
     					out.close();
 //***    					MediaStore.Images.Media.insertImage(mContext.getContentResolver(),file.getAbsolutePath(),file.getName(),file.getName());
+    					mContext.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
     					
     					if(mSettings.mStoreGPS)
     						ExifWrapper.addCoordinates(file.getAbsolutePath(), WorkImage.gLatitude, WorkImage.gLongitude);
@@ -754,31 +790,4 @@ ftpupload:	{
 		}
 	}
 
-/*	@Override
-	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
-	{
-		tryOpenCam();
-	}
-
-	@Override
-	public void surfaceCreated(SurfaceHolder holder)
-	{
-		tryOpenCam();
-	}
-
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder)
-	{
-		// Surface will be destroyed when we return, so stop the preview.
-		// Because the CameraDevice object is not a shared resource, it's very
-		// important to release it when the activity is paused.
-		if(mCamera != null)
-		{
-			mCamera = null;
-			mCamera.setPreviewCallback(null);
-			mCamera.stopPreview();
-			mCamera.release();
-			mCamera = null;
-		}
-	}*/
 }

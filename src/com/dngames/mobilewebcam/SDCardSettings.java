@@ -12,22 +12,31 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
 package com.dngames.mobilewebcam;
 
+import java.io.File;
+
+import android.app.ProgressDialog;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.preference.PreferenceScreen;
+import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 
-public class SDCardSettings extends PreferenceActivity implements OnSharedPreferenceChangeListener
+public class SDCardSettings extends PreferenceActivity implements OnSharedPreferenceChangeListener, Handler.Callback
 {
+	Handler mHandler = new Handler(this);
+	
 	 @Override
 	 public void onCreate(Bundle savedInstanceState)
 	 {

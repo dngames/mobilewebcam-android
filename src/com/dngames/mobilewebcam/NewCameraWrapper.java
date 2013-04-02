@@ -123,6 +123,43 @@ public class NewCameraWrapper
 		{
 		}
 	}
+
+	public static int getMinExposureCompensation(Camera.Parameters params)
+	{
+		try
+		{
+			return params.getMinExposureCompensation();
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+		
+		return 0;
+	}
+	
+	public static int getMaxExposureCompensation(Camera.Parameters params)
+	{
+		try
+		{
+			return params.getMaxExposureCompensation();
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+		
+		return 0;
+	}
+	
+	public static void setExposureCompensation(Camera.Parameters params, int value)
+	{
+		try
+		{
+			params.setExposureCompensation(value);
+		}
+		catch(NoSuchMethodError e)
+		{
+		}
+	}		
 	
 	public static boolean isFlashSupported(Camera.Parameters params)
 	{

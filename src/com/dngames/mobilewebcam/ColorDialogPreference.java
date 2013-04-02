@@ -120,7 +120,7 @@ public class ColorDialogPreference extends DialogPreference {
 			centerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 			centerPaint.setColor(color);
 			centerPaint.setStrokeWidth(5);
-			
+
 			DisplayMetrics metrics = new DisplayMetrics();
 			WindowManager wm = (WindowManager)context.getSystemService(Context.WINDOW_SERVICE);
 			Display display = wm.getDefaultDisplay();			
@@ -137,6 +137,7 @@ public class ColorDialogPreference extends DialogPreference {
 		public void setColor(int color)
 		{
 			centerPaint.setColor(color);
+			mAlphaSlider.setProgress(Color.alpha(ColorDialogPreference.this.color));			
 			invalidate();
 		}
 		
@@ -254,7 +255,7 @@ public class ColorDialogPreference extends DialogPreference {
 				break;
 			case MotionEvent.ACTION_UP:
 				ColorDialogPreference.this.color = centerPaint.getColor();
-				mColorCode.setText(Integer.toHexString(ColorDialogPreference.this.color).toUpperCase());
+				mColorCode.setText(toHex(ColorDialogPreference.this.color));
 				mAlphaSlider.setProgress(Color.alpha(ColorDialogPreference.this.color));
 				break;
 			}
@@ -295,14 +296,23 @@ public class ColorDialogPreference extends DialogPreference {
 		mContext = context;
 	}
 	
+	// convert integer argb color to hex string
+	private String toHex(int color)
+	{
+		String colstr = Integer.toHexString(color);
+		for(int i = colstr.length(); i < 8; i++)
+			colstr = "0" + colstr;
+		return colstr.toUpperCase();
+	}
+	
 	protected void onDialogClosed(boolean positiveResult)
 	{
 		// Persist the color after the ok button is clicked.
-		if (positiveResult && color != 0)
+		if (positiveResult)
 		{
-			String colstr = "#"+Integer.toHexString(color);
-			persistString(colstr);
-			callChangeListener(colstr);
+			String colstr = toHex(color);
+			persistString("#" + colstr);
+			callChangeListener("#" + colstr);
 		}
 
 		super.onDialogClosed(positiveResult);
@@ -327,7 +337,7 @@ public class ColorDialogPreference extends DialogPreference {
 		{
 			return;
 		}
-		mColorCode.setText(Integer.toHexString(color).toUpperCase());
+		mColorCode.setText(toHex(color));
 		mAlphaSlider.setProgress(Color.alpha(color));
 	}
 	
@@ -360,7 +370,7 @@ public class ColorDialogPreference extends DialogPreference {
 	protected void onPrepareDialogBuilder(Builder builder)
 	{
 		String colstr = getPersistedString(this.defaultValue);
-		int color = Color.BLACK;
+		color = Color.BLACK;
 		try
 		{
 			color = Color.parseColor(colstr);
@@ -380,7 +390,7 @@ public class ColorDialogPreference extends DialogPreference {
 			public void colorChanged(int c)
 			{
 				ColorDialogPreference.this.color = c;
-				mColorCode.setText(Integer.toHexString(ColorDialogPreference.this.color).toUpperCase());
+				mColorCode.setText(toHex(ColorDialogPreference.this.color));
 				mAlphaSlider.setProgress(Color.alpha(ColorDialogPreference.this.color));
 			}
 		};
@@ -394,7 +404,7 @@ public class ColorDialogPreference extends DialogPreference {
 				{
 					int c = ColorDialogPreference.this.color;
 					ColorDialogPreference.this.color = Color.argb(progress, Color.red(c), Color.green(c), Color.blue(c));
-					mColorCode.setText(Integer.toHexString(ColorDialogPreference.this.color).toUpperCase());
+					mColorCode.setText(toHex(ColorDialogPreference.this.color));
 					colorpicker.setColor(ColorDialogPreference.this.color);
 				}
 			}
@@ -454,7 +464,7 @@ public class ColorDialogPreference extends DialogPreference {
 					}
 				}
 			} });*/
-		mColorCode.setText(Integer.toHexString(color).toUpperCase());
+		mColorCode.setText(toHex(color));
 		layout.addView(colorpicker, 1);
 		builder.setView(dialoglayout);
 //		builder.setView(new ColorPickerView(getContext(), dialogColorChangedListener, color));

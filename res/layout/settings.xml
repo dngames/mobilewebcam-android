@@ -16,7 +16,6 @@
 		android:dialogTitle="Picture size"/>
 	
 	<PreferenceScreen
-		xmlns:android="http://schemas.android.com/apk/res/android"
 		android:title="Custom Picture Size">
 	
 		<EditTextPreference
@@ -60,7 +59,6 @@
 		android:defaultValue="false"/>
 	
 	<PreferenceScreen
-		xmlns:android="http://schemas.android.com/apk/res/android"
 		android:title="Rotate Images">
 		
     	<CheckBoxPreference
@@ -84,11 +82,10 @@
 	</PreferenceScreen>
 			
 	<PreferenceScreen
-		xmlns:android="http://schemas.android.com/apk/res/android"
 		android:title="Image Imprint">
 	    
 		<PreferenceScreen
-			android:title="Info">
+			android:title="Infotext">
 
 			<EditTextPreference
 				android:key="imprint_text"
@@ -190,7 +187,7 @@
 			<com.dngames.mobilewebcam.ColorDialogPreference
 				android:key="datetime_shadowcolor"
 				android:title="Shadow Color"
-				android:summary="Print a shadow for info texts in this color to improve readability."
+				android:summary="Print a shadow for date time text in this color to improve readability."
 	            android:defaultValue="#FF000000"/>
 
       		<com.dngames.mobilewebcam.ColorDialogPreference
@@ -235,7 +232,7 @@
 	           android:summary="@string/summary_imprintalign"
 	           android:entries="@array/entries_imprintalign"
 	           android:entryValues="@array/entryvalues_imprintalign"
-	           android:defaultValue="LEFT"
+	           android:defaultValue="RIGHT"
 	           android:dialogTitle="@string/dialog_title_imprintalign"/>
 			
 		</PreferenceScreen>
@@ -253,6 +250,24 @@
 		        android:scrollHorizontally="true"
 		        android:singleLine="true"/>
 
+			<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="statusinfo_color"
+				android:title="Color"
+				android:summary="Print status text in this color if enabled."
+	            android:defaultValue="#FFFFFFFF"/> 
+
+			<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="statusinfo_shadowcolor"
+				android:title="Shadow Color"
+				android:summary="Print a shadow for the status text in this color to improve readability."
+	            android:defaultValue="#FF000000"/>			
+			
+      		<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="statusinfo_backcolor"
+				android:title="Background Color"
+				android:summary="Draw a colored background under the info text to improve readability."
+	            android:defaultValue="#00000000"/>			
+			
 			<com.dngames.mobilewebcam.SeekBarPreference
 				android:key="statusinfo_x"
 		        android:title="Horizontal position"
@@ -268,20 +283,22 @@
 		        android:defaultValue="92"
 		        android:text=" %"
 		        android:max="100"/>
-			
-      		<com.dngames.mobilewebcam.ColorDialogPreference
-				android:key="statusinfo_backcolor"
-				android:title="Background Color"
-				android:summary="Draw a colored background under the info text to improve readability."
-	            android:defaultValue="#00000000"/>			
-			
+						
 			<CheckBoxPreference
 		      	android:key="statusinfo_fillline"
 		      	android:title="Background Line"
 		      	android:summary="Draw a full filled line of background instead of the area under the info texts."
 		      	android:defaultValue="true"/>
 		
-			<ListPreference
+	      <com.dngames.mobilewebcam.SeekBarPreference
+				android:key="statusinfo_fontsize"
+		        android:title="Font size"
+		        android:summary="Scale font here."
+		        android:defaultValue="6"
+		        android:text=""
+		        android:max="48"/>
+			
+	      <ListPreference
 	           android:key="statusinfo_imprintalign"
 	           android:title="@string/title_imprintalign"
 	           android:summary="@string/summary_imprintalign"
@@ -307,7 +324,25 @@
 				android:summary="Print current gps location as address instead of coordinates!"
 			    android:defaultValue="false"/>
 	 
-			<com.dngames.mobilewebcam.SeekBarPreference
+			<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="gps_color"
+				android:title="Color"
+				android:summary="Print gps text in this color if enabled."
+	            android:defaultValue="#FFFFFFFF"/> 
+
+			<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="gps_shadowcolor"
+				android:title="Shadow Color"
+				android:summary="Print a shadow for gps text in this color to improve readability."
+	            android:defaultValue="#FF000000"/>
+
+      		<com.dngames.mobilewebcam.ColorDialogPreference
+				android:key="gps_backcolor"
+				android:title="Background Color"
+				android:summary="Draw a colored background under the text to improve readability."
+	            android:defaultValue="#00000000"/>
+			 
+      		<com.dngames.mobilewebcam.SeekBarPreference
 				android:key="gps_x"
 		        android:title="Horizontal position"
 		        android:summary="Move text position horizontally."
@@ -329,6 +364,14 @@
 		      	android:summary="Draw a full filled line of background instead of the area under the info texts."
 		      	android:defaultValue="true"/>
 		
+	      <com.dngames.mobilewebcam.SeekBarPreference
+				android:key="gps_fontsize"
+		        android:title="Font size"
+		        android:summary="Scale font here."
+		        android:defaultValue="6"
+		        android:text=""
+		        android:max="48"/>
+						
 			<ListPreference
 	           	android:key="gps_imprintalign"
 	           	android:title="@string/title_imprintalign"
@@ -340,17 +383,58 @@
 	
 		</PreferenceScreen>
 		
-		<PreferenceCategory
+		<PreferenceScreen
 			android:title="Stamp Picture">
-
+				
 			<CheckBoxPreference
-			android:key="imprint_picture"
-			android:title="Picture"
-			android:summary="Print your custom image sdcard/MobileWebCam/imprint.png onto the cam pic."
-			android:defaultValue="false"
-			/>
-	
-		</PreferenceCategory>
+				android:key="imprint_picture"
+				android:title="Picture"
+				android:summary="Print your custom image sdcard/MobileWebCam/imprint.png or from the web onto the cam pic."
+				android:defaultValue="false"/>
+			
+			<com.dngames.mobilewebcam.SeekBarPreference
+				android:key="imprint_picture_x"
+		        android:title="Horizontal position"
+		        android:summary="Move picture position horizontally."
+		        android:defaultValue="0"
+		        android:text=" %"
+		        android:max="100"/>
+
+			<com.dngames.mobilewebcam.SeekBarPreference
+				android:key="imprint_picture_y"
+		        android:title="Vertical position"
+		        android:summary="Move picture position vertically."
+		        android:defaultValue="0"
+		        android:text=" %"
+		        android:max="100"/>
+			
+			<CheckBoxPreference
+				android:key="imprint_picture_stretch"
+				android:title="Stretch"
+				android:summary="Stretch the picture to match the full size of your camera picture."
+				android:defaultValue="true"/>			
+			
+			<PreferenceCategory
+			    android:title="Dynamic Stamp">
+			    
+				<EditTextPreference
+			        android:key="imprint_picture_url"
+			        android:title="Web Picture"
+			        android:summary="Image URL to read imprint picture from. With this you can add weather info or whatever picture you like to the camera."
+			        android:hint="http://www.YOURDOMAIN.COM/somepicture.png"
+			        android:inputType="textUri"
+			        android:scrollHorizontally="true"
+			        android:singleLine="true"/>
+							
+				<CheckBoxPreference
+					android:key="imprint_picture_refresh"
+					android:title="Refresh always"
+					android:summary="Reload stamp web picture for every photo."
+					android:defaultValue="false"/>
+				
+			</PreferenceCategory>
+				
+		</PreferenceScreen>
 	</PreferenceScreen>
 	
 <!-- 	<PreferenceScreen
@@ -394,7 +478,7 @@
 		android:key="store_gps"
 		android:title="GPS"
 		android:summary="Add GPS coordinates to picture files (EXIF)."
-	    android:defaultValue="false"/>	
+	    android:defaultValue="false"/>
 
   </PreferenceCategory>	
 		

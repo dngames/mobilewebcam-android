@@ -102,7 +102,7 @@ public class TakeHiddenPicture extends CamActivity
 
         	Log.v("MobileWebCam", "Keyguard unlocked!");
     	}
-	        
+
 		super.onResume();
 
 		if(!MobileWebCam.gIsRunning && !MobileWebCam.gInSettings)
@@ -125,6 +125,8 @@ public class TakeHiddenPicture extends CamActivity
 		public void run()
 		{
 			MobileWebCam.LogE("TakeHiddenPicture timeout - finish!");
+			Log.v("MobileWebCam", "PhotoLock released!");
+			Preview.mPhotoLock.set(false);
 			finish();
 		}
 	};

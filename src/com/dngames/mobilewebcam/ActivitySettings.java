@@ -45,18 +45,46 @@ public class ActivitySettings extends PreferenceActivity implements OnSharedPref
 			modelist.setEntries(getResources().getStringArray(R.array.entries_list_camera_mode_no_hiddenmode));
 			modelist.setEntryValues(getResources().getStringArray(R.array.entryvalues_list_camera_mode_no_hiddenmode));
 		}
+
+//***        getPreferenceManager().findPreference("browser_open").setSummary(current_url);
+//***        getPreferenceManager().findPreference("website_refresh").setSummary(WebsiteLiveWallpaperSettings.this.getString(R.string.refresh_settings_summary, getPreferenceManager().getSharedPreferences().getString("website_refresh", "0")));
+		
+		getPreferenceManager().findPreference("motiondetectPIR_info").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
+		{
+	         @Override
+	         public boolean onPreferenceClick(Preference preference)
+	         {
+	        	 Intent intent = new Intent(Intent.ACTION_VIEW);
+	        	 intent.setData(Uri.parse("http://www.me-systeme.de/forum/opensmartcam-f16/"));
+	             startActivity(intent);
+	             return true;
+	         }
+        });
+
+		getPreferenceManager().findPreference("motiondetectPIR_enable").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
+		{
+	         @Override
+	         public boolean onPreferenceClick(Preference preference)
+	         {
+	        	 SharedPreferences prefs = getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
+	        	 Editor edit = prefs.edit();
+	        	 edit.putString("cam_broadcast_activation", "android.intent.action.ACTION_POWER_CONNECTED");
+	        	 edit.putString("cam_intents_repeat", "5");
+	        	 edit.commit();
+	        	 Toast.makeText(ActivitySettings.this, "POWER_CONNECTED intent trigger enabled,\n5 pictures will be taken on trigger!\n\nFor event notifications setup email!", Toast.LENGTH_LONG).show();
+	        	 finish(); // settings need to be shown updated!
+	             return true;
+	         }
+        });
 	 }
 
      public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
      {
     	 if(key != null && key.equals("camera_mode"))
     	 {
-	        String v = sharedPreferences.getString("camera_mode", "1");
-	        if(v.length() < 1 || v.length() > 9)
-	        	v = "1";
-	        switch(Integer.parseInt(v))
+	        switch(PhotoSettings.getCamMode(sharedPreferences))
 	        {
-	        case 2:
+	        case HIDDEN:
 				boolean ok = false;
 				try
 				{
@@ -66,7 +94,7 @@ public class ActivitySettings extends PreferenceActivity implements OnSharedPref
 				{
 					e.printStackTrace();
 					SharedPreferences.Editor edit = sharedPreferences.edit();
-					edit.putString("camera_mode", "3");
+					edit.putString("camera_mode", PhotoSettings.Mode.BACKGROUND.ordinal() + "");
 					edit.commit();
 					Toast.makeText(ActivitySettings.this, "Hidden camera mode not working on your device!", Toast.LENGTH_LONG).show();
 				}
@@ -74,7 +102,7 @@ public class ActivitySettings extends PreferenceActivity implements OnSharedPref
 				if(ok)
 					finish();
 	        	break;
-	        case 3:
+	        case BACKGROUND:
 				finish();
 				break;
 	        }

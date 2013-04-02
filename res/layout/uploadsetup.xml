@@ -18,6 +18,4 @@
         android:title="SDCard"/>
 						
 	</PreferenceCategory>
-	        
-
 </PreferenceScreen>

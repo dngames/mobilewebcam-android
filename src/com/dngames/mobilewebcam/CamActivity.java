@@ -85,7 +85,7 @@ public class CamActivity extends Activity
 	        PowerManager.WakeLock old = mWakeLock;
 
 	        PowerManager pm = (PowerManager)CamActivity.this.getSystemService(Context.POWER_SERVICE);
-	        if(mSettings.mMode == Mode.BACKGROUND || mSettings.mMode == Mode.BROADCASTRECEIVER)
+	        if(mSettings.mMode == Mode.BACKGROUND)
 	        	mWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK|PowerManager.ACQUIRE_CAUSES_WAKEUP|PowerManager.ON_AFTER_RELEASE, "MobileWebCam");
 	        else if(mSettings.mFullWakeLock)
 	        	mWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "MobileWebCam");

@@ -40,28 +40,24 @@
     <item>Normal (with preview, app running)</item>
     <item>Semi-Background (full cam features, wakeup)</item>
     <item>Background (fast snapshots, hidden)</item>
-    <item>Broadcast Receiver (full cam features, wakeup)</item>
     </string-array>
   <string-array name="entryvalues_list_camera_mode">
     <item>0</item>
     <item>1</item>
     <item>3</item>
     <item>2</item>
-    <item>4</item>
   </string-array>
 
   <string-array name="entries_list_camera_mode_no_hiddenmode">
     <item>Manual (tap to take picture)</item>
     <item>Normal (with preview, app running)</item>
     <item>Semi-Background (full cam features, wakeup)</item>
-	<item>Broadcast Receiver (full cam features, wakeup)</item>
   </string-array>
   
   <string-array name="entryvalues_list_camera_mode_no_hiddenmode">
     <item>0</item>
     <item>1</item>
     <item>3</item>
-    <item>4</item>
   </string-array>
   
 	<string-array name="entries_list_filter">
@@ -115,6 +111,7 @@
 		<item>LEFT</item>
 		<item>CENTER</item>
 		<item>RIGHT</item>
-	</string-array>	
-		
+	</string-array>
+	
+	<string name="battery_imprint_default" formatted="false">Battery %d%% %.1f&#xb0;C</string>
 </resources>
