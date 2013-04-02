@@ -33,10 +33,8 @@ import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 
-public class SDCardSettings extends PreferenceActivity implements OnSharedPreferenceChangeListener, Handler.Callback
+public class SDCardSettings extends PreferenceActivity implements OnSharedPreferenceChangeListener
 {
-	Handler mHandler = new Handler(this);
-	
 	 @Override
 	 public void onCreate(Bundle savedInstanceState)
 	 {

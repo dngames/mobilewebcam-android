@@ -52,9 +52,6 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.BufferedHttpEntity;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntity;
-import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.AbstractHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
@@ -605,7 +602,6 @@ ftpupload:	{
 					e.printStackTrace();
 					publishProgress("Ftp socket exception!");
 					MobileWebCam.LogE("Ftp socket exception!");
-					session = null;
 					client = null;
 				}
 				catch (UnknownHostException e)
@@ -613,7 +609,6 @@ ftpupload:	{
 					e.printStackTrace();
 					publishProgress("Unknown ftp host!");
 					MobileWebCam.LogE("Unknown ftp host!");
-					session = null;
 					client = null;
 				}
 				catch (IOException e)
@@ -634,7 +629,6 @@ ftpupload:	{
 				catch (NullPointerException e)
 				{
 					MobileWebCam.LogE("NullPointerException:\n" + e.getMessage());
-					session = null;
 					client = null;
 				}
 			}

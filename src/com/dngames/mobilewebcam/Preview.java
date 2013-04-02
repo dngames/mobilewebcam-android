@@ -84,23 +84,6 @@ import android.content.Intent;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import org.apache.http.entity.mime.MultipartEntity;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.content.AbstractContentBody;
-import org.apache.http.entity.mime.content.StringBody;
-import org.apache.http.entity.mime.MIME;
-
-
-import org.apache.http.client.HttpClient;
-import org.apache.http.HttpEntity;
-import org.apache.http.util.EntityUtils;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.AbstractHttpClient;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.HttpResponse;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-
 import org.apache.commons.net.ftp.FTPClient;
 
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
@@ -171,7 +154,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						{
 							Log.i("MobileWebCam", "mPostPicture.run mCamera");
 							
-							if ((mSettings.mFTPPictures && !mSettings.mFTP.equals(mSettings.mDefaultFTPurl) || mSettings.mStorePictures)
+							if (mSettings.mFTPPictures && !mSettings.mFTP.equals(mSettings.mDefaultFTPurl) || mSettings.mStorePictures)
 							{
 								boolean ignoreinactivity = false; 
 								long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
@@ -1140,10 +1123,6 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			final Intent shareIntent = new Intent(android.content.Intent.ACTION_SEND);
 			shareIntent.setType("image/jpeg");
 			shareIntent.putExtra(android.content.Intent.EXTRA_STREAM, Uri.parse("file:///data/data/com.dngames.mobilewebcam/files/current.jpg"));
-			if(s.mEmailReceiverAddress.length() > 0)
-				shareIntent.putExtra(android.content.Intent.EXTRA_EMAIL, new String[] { s.mEmailReceiverAddress });
-			if(s.mEmailSubject.length() > 0)
-				shareIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, s.mEmailSubject);
 			c.startActivity(Intent.createChooser(shareIntent, "Share picture ...").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

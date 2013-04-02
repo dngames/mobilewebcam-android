@@ -149,8 +149,6 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	
 	final String mDefaultFTPurl = "FTP.YOURDOMAIN.COM";
     
-	@StringPref(key = "cam_url", val = mDefaulturl)
-	public String mURL = mDefaulturl;
     @StringPref(key = "cam_login", val = "")
 	public String mLogin = "";
     @StringPref(key = "cam_password", val = "")
