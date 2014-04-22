@@ -15,14 +15,12 @@
 
 package com.dngames.mobilewebcam;
 
-import java.io.IOException;
 import java.util.List;
 
+import android.annotation.TargetApi;
 import android.hardware.Camera;
-import android.hardware.Camera.Size;
-import android.media.ExifInterface;
-import android.util.Log;
 
+@TargetApi(5)
 public class CameraPreviewWrapper
 {
 	/* calling here forces class initialization */

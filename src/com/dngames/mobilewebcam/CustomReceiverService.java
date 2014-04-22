@@ -11,7 +11,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+import android.os.Debug;
 import android.os.IBinder;
+import android.util.Log;
 import android.widget.Toast;
 
 public class CustomReceiverService extends Service implements OnSharedPreferenceChangeListener
@@ -70,18 +72,21 @@ public class CustomReceiverService extends Service implements OnSharedPreference
 	{
 		super.onDestroy();
 
-        MobileWebCam.LogI("Destroyed broadcast receiver: " + mBroadcastReceiver);
-        try
+        if(MobileWebCam.gCustomReceiverActive)
         {
-			unregisterReceiver(gCustomReceiver);
-	        MobileWebCam.gCustomReceiverActive = false;
-        }
-        catch(IllegalArgumentException e)
-        {
-        	if(e.getMessage() != null)
-        		MobileWebCam.LogE(e.getMessage());
-        	else
-        		MobileWebCam.LogE(e.toString());
+	        MobileWebCam.LogI("Destroyed broadcast receiver: " + mBroadcastReceiver);
+	        try
+	        {
+				unregisterReceiver(gCustomReceiver);
+		        MobileWebCam.gCustomReceiverActive = false;
+	        }
+	        catch(IllegalArgumentException e)
+	        {
+	        	if(e.getMessage() != null)
+	        		MobileWebCam.LogE(e.getMessage());
+	        	else
+	        		MobileWebCam.LogE(e.toString());
+	        }
         }
 	}
 
@@ -111,14 +116,14 @@ public class CustomReceiverService extends Service implements OnSharedPreference
         @Override
         public void onReceive(Context context, Intent intent)
         {
-        	MobileWebCam.LogI("Broadcast received: " + intent.getAction());
+        	Log.i("MobileWebCam", "Broadcast received: " + intent.getAction());
         	
 	        SharedPreferences prefs = context.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
         	String action = prefs.getString("cam_broadcast_activation", "");
     		if(intent.getAction().equals(action))
     		{
     			int cnt = PhotoSettings.getEditInt(context, prefs, "cam_intents_repeat", 1);
-    			ControlReceiver.EventPhoto(context, prefs, cnt);
+    			ControlReceiver.EventPhoto(context, prefs, cnt, intent.getAction());
     		}
         }
     };		

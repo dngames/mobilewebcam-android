@@ -16,28 +16,17 @@
 package com.dngames.mobilewebcam;
 
 import android.content.Context;
-import android.content.BroadcastReceiver;
 import android.content.SharedPreferences;
 import android.app.AlarmManager;
 
 import java.lang.ref.WeakReference;
 import java.util.Calendar;
-import java.util.Date;
 
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
 
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.widget.Toast;
-import android.net.ConnectivityManager;
-import android.net.wifi.WifiManager;
-import android.os.Debug;
-import android.os.PowerManager;
 import android.util.Log;
-import android.content.SharedPreferences;
-import android.app.Notification;
-import android.app.NotificationManager;
 
 public class PhotoAlarmReceiver extends PhotoReceiver
 {
@@ -46,7 +35,7 @@ public class PhotoAlarmReceiver extends PhotoReceiver
 	@Override
 	public void onReceive(Context context, Intent intent)
 	{
-		MobileWebCam.LogI("Alarm went off");
+		Log.i("MobileWebCam", "Alarm went off");
 		
 		Calendar time = Calendar.getInstance();
 		time.setTimeInMillis(System.currentTimeMillis());
@@ -66,6 +55,7 @@ public class PhotoAlarmReceiver extends PhotoReceiver
 	
 			AlarmManager alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 			Intent i = new Intent(context, PhotoAlarmReceiver.class);
+			i.putExtra("event", intent.getStringExtra("event"));
 			PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
 			alarmMgr.cancel(pendingIntent);
 			time.add(Calendar.SECOND, refresh);

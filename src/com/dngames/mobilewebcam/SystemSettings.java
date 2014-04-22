@@ -1,40 +1,33 @@
+/* Copyright 2012 Michael Haar
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
 package com.dngames.mobilewebcam;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintStream;
 
-import android.app.ProgressDialog;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Message;
-import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceScreen;
-import android.util.Log;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.BaseAdapter;
 import android.widget.Toast;
-import android.content.Context;
-
-import android.net.NetworkInfo;
-import android.net.ConnectivityManager;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import org.apache.http.conn.util.InetAddressUtils;
-import java.util.Enumeration;
 
 public class SystemSettings extends PreferenceActivity
 {
@@ -128,6 +121,7 @@ public class SystemSettings extends PreferenceActivity
 							cfg.append(line);
 							cfg.append('\n');
 						}
+						br.close();
 						PhotoSettings.GETSettings(SystemSettings.this, cfg.toString(), prefs);
 						Toast.makeText(SystemSettings.this, "ok", Toast.LENGTH_SHORT).show();						
 					}

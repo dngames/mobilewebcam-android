@@ -40,6 +40,7 @@ import android.view.KeyEvent;
 public class TakeHiddenPicture extends CamActivity
 {
 	KeyguardLock mLock = null;
+	long mStartTime; 
 	
     @Override
 	protected void onCreate(Bundle savedInstanceState)
@@ -109,6 +110,8 @@ public class TakeHiddenPicture extends CamActivity
     	{
 			mPreview.setVisibility(View.VISIBLE);
     		
+	    	mStartTime = System.currentTimeMillis();
+	    			
 			// timeout in case anything went wrong!
 			mHandler.removeCallbacks(mTimeOut);
 			mHandler.postDelayed(mTimeOut, 120 * 1000);
@@ -124,9 +127,10 @@ public class TakeHiddenPicture extends CamActivity
 		@Override
 		public void run()
 		{
-			MobileWebCam.LogE("TakeHiddenPicture timeout - finish!");
-			Log.v("MobileWebCam", "PhotoLock released!");
-			Preview.mPhotoLock.set(false);
+			long curtime = System.currentTimeMillis();
+			MobileWebCam.LogE("TakeHiddenPicture timeout - finish after " + ((curtime - mStartTime) / 1000) + " s!");
+			if(Preview.mPhotoLock.getAndSet(false))
+				MobileWebCam.LogE("PhotoLock released!");
 			finish();
 		}
 	};
@@ -137,6 +141,8 @@ public class TakeHiddenPicture extends CamActivity
     	super.onPause();
 
     	Log.v("MobileWebCam", "TakeHiddenPicture.onPause");
+		
+		closeDown();		
     	
 /*    	if(mLock != null)
     	{
@@ -149,6 +155,8 @@ public class TakeHiddenPicture extends CamActivity
     public void onDestroy()
     {
     	Log.v("MobileWebCam", "TakeHiddenPicture.onDestroy");
+		
+		closeDown();
     	
     	if(mLock != null)
     	{
@@ -159,6 +167,14 @@ public class TakeHiddenPicture extends CamActivity
     	}
 
     	super.onDestroy();
+    }
+    
+    private void closeDown()
+    {
+		mHandler.removeCallbacks(mTimeOut);
+
+		if(Preview.mPhotoLock.getAndSet(false))
+			Log.w("MobileWebCam", "PhotoLock released because activity is going down!");
     }
     
 /*	@Override

@@ -16,16 +16,12 @@
 package com.dngames.mobilewebcam;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Locale;
 
 import android.annotation.TargetApi;
 import android.graphics.Typeface;
-import android.hardware.Camera;
-import android.hardware.Camera.Size;
 import android.media.ExifInterface;
 import android.os.Build;
-import android.util.Log;
 
 @TargetApi(Build.VERSION_CODES.ECLAIR)
 public class ExifWrapper
@@ -60,7 +56,7 @@ public class ExifWrapper
 			return "W";
 	}
 
-	public static void addCoordinates(String filename, double lat, double lon)
+	public static void addCoordinates(String filename, double lat, double lon, double alt)
 	{
 		
 		try {
@@ -69,6 +65,8 @@ public class ExifWrapper
 			exif.setAttribute(ExifInterface.TAG_GPS_LATITUDE_REF, GetLatRef(lat));
 			exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE, DegreesToDaysMinutesSeconds(Math.abs(lon)));
 			exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF, GetLonRef(lon));
+/*			exif.setAttribute(ExifInterface.TAG_GPS_ALTITUDE, DegreesToDaysMinutesSeconds(Math.abs(alt)));
+			exif.setAttribute(ExifInterface.TAG_GPS_ALTITUDE_REF, GetAltRef(alt)); */
 			exif.saveAttributes();
 		} catch (IOException e) {
 			e.printStackTrace();

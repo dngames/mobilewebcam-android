@@ -35,33 +35,25 @@
 			android:defaultValue="24:00"/>
 			
 		<CheckBoxPreference
-			android:key="night_detect"
-			android:title="No Dark Picture Uploads"
-			android:summary="Try to not upload nearly black (night) pictures. When enabled consumes a little more battery power!"
-			android:defaultValue="false"/>
-	
-		<CheckBoxPreference
 			android:key="lowbattery_pause"
 			android:title="Low Battery Pause"
-			android:summary="Stop pictures while battery power is below 15%! Allows solar charger to refill power."
+			android:summary="Stop pictures while battery power is below 5%! Allows solar charger to refill power."
 			android:defaultValue="false"/>
 			
 		<PreferenceScreen
 			android:title="Night Settings">
 			
-	    	<CheckBoxPreference
-				android:key="night_autoflash"
-				android:title="Auto Flashlight at Night"
-				android:summary="Use Flashlight (if available) automatically in the darkness! High power consumption, much slower pictures. Activation for next picture."
-				android:defaultValue="false"/>
-
 			<CheckBoxPreference
-				android:key="night_autobright"
-				android:title="Auto Brightness at Night"
-				android:summary="Use night camera settings for exposure, night mode, whitebalance (if available) automatically in the darkness! High power consumption, much slower pictures. Activation for next picture."
+				android:key="night_detect"
+				android:title="No Dark Picture Uploads"
+				android:summary="Try to not upload nearly black (night) pictures. When enabled consumes a little more battery power! Not connected to night time settings."
 				android:defaultValue="false"/>
+			
+			<PreferenceScreen
+			    android:enabled="false"
+				android:summary="Configure night camera parameters in camera screen menu. Define when they are used here."/>			
 
-			<com.dngames.mobilewebcam.TimePickerPreference
+   			<com.dngames.mobilewebcam.TimePickerPreference
 				android:key="night_starttime"
 			    android:summary="Instead of auto detection force night settings beginning at this time. Set to same as end to disable. Less power consumption than auto."
 				android:title="Night Start"
@@ -71,13 +63,30 @@
 				android:key="night_endtime"
 			    android:summary="Instead of auto detection end night settings at this time of day. Overrides auto detection and is much faster!"
 				android:title="Night End"
-				android:defaultValue="24:00"/>			
+				android:defaultValue="24:00"/>
 
-			<CheckBoxPreference
-				android:key="night_ir_light"
-				android:title="Recolor Infrared Light"
-				android:summary="If you use an infrared spotlight for pictures in the darkness you may want to have the resulting violet pictures recolored with this setting."
-				android:defaultValue="false"/>
+		    <PreferenceCategory
+				android:title="Advanced">
+						
+		    	<CheckBoxPreference
+					android:key="night_auto"
+					android:title="Auto Night Detection"
+					android:summary="Instead of set start/endtime use night settings automatically in the darkness! High power consumption, much slower pictures. Activation for next picture after a dark one!"
+					android:defaultValue="false"/>
+		
+				<CheckBoxPreference
+						android:key="night_autobright"
+						android:title="Night Vision"
+						android:summary="Use special night vision camera settings for exposure, night mode, whitebalance (if available) and process picture."
+						android:defaultValue="false"/>
+	
+				<CheckBoxPreference
+					android:key="night_ir_light"
+					android:title="Recolor Infrared Light"
+					android:summary="If you use an infrared spotlight for pictures in the darkness you may want to have the resulting violet pictures recolored with this setting."
+					android:defaultValue="false"/>
+				
+			</PreferenceCategory>
 												
 		</PreferenceScreen>
 						
@@ -90,7 +99,7 @@
 				<CheckBoxPreference
 					android:key="motion_detect"
 					android:title="Detect Motion"
-					android:summary="Take pictures only when motion has been detected."
+					android:summary="Take pictures only when motion has been detected. Refresh duration is min time between two motions."
 					android:defaultValue="false"/>
 				    
 				<com.dngames.mobilewebcam.SeekBarPreference

@@ -15,7 +15,12 @@
 			android:key="market_open"
 			android:title="Rate and recommend"
 			android:summary="Open Google Play ... This really helps for motivation. Thanks!"/>
->
+	
+		<CheckBoxPreference
+			android:key="disable_ads"
+			android:title="Disable ads"
+			android:summary="Save traffic. Please honor the amount of work I put into this and please do not forget to rate the app!"
+			android:defaultValue="false"/>
 				
  	</PreferenceCategory>
     	
@@ -44,7 +49,7 @@
 			android:key="cam_openeddelay"
 			android:title="Wait for Camera"
 			android:summary="Delay picture for this many milliseconds in background modes. Give the camera time to take the picture after opening! Required on many devices to avoid overexposed shots."
-			android:defaultValue="200"
+			android:defaultValue="500"
 			android:hint="1000"
 			android:numeric="integer"/>	    	    
 	
@@ -59,7 +64,13 @@
 			android:title="Autostart"
 			android:summary="Start the app automatically after bootup. Use if you need reboot function or have an unstable device."
 			android:defaultValue="false"/>
-    
+
+		<CheckBoxPreference
+			android:key="opensettings"
+			android:title="Open Settings"
+			android:summary="Open these settings instead of camera view when starting the app from launcher or notification. Useful for background mode configuration."
+			android:defaultValue="false"/>
+				
 	</PreferenceCategory>
 
 	<PreferenceCategory

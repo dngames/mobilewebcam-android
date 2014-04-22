@@ -117,7 +117,7 @@ public class NanoHTTPD
 	{
 		Log.v("NanoHTTPD", method + " '" + uri + "' " );
 
-		Enumeration e = header.propertyNames();
+		Enumeration<?> e = header.propertyNames();
 		while ( e.hasMoreElements())
 		{
 			String value = (String)e.nextElement();
@@ -490,7 +490,7 @@ public class NanoHTTPD
 					{
 						int p = line.indexOf( ':' );
 						if ( p >= 0 )
-							header.put( line.substring(0,p).trim().toLowerCase(), line.substring(p+1).trim());
+							header.put( line.substring(0,p).trim().toLowerCase(Locale.US), line.substring(p+1).trim());
 						line = in.readLine();
 					}
 				}
@@ -526,7 +526,7 @@ public class NanoHTTPD
 					{
 						int p = mpline.indexOf( ':' );
 						if (p != -1)
-							item.put( mpline.substring(0,p).trim().toLowerCase(), mpline.substring(p+1).trim());
+							item.put( mpline.substring(0,p).trim().toLowerCase(Locale.US), mpline.substring(p+1).trim());
 						mpline = in.readLine();
 					}
 					if (mpline != null)
@@ -754,7 +754,7 @@ public class NanoHTTPD
 
 				if ( header != null )
 				{
-					Enumeration e = header.keys();
+					Enumeration<?> e = header.keys();
 					while ( e.hasMoreElements())
 					{
 						String key = (String)e.nextElement();

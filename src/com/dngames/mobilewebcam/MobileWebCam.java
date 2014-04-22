@@ -15,30 +15,12 @@
 
 package com.dngames.mobilewebcam;
 
-import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.IntentFilter;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.RectF;
-import android.graphics.Bitmap.CompressFormat;
 import android.hardware.Camera;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Debug;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.PowerManager;
-import android.provider.Settings;
-import android.provider.Settings.SettingNotFoundException;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -54,15 +36,6 @@ import java.util.Locale;
 import android.app.PendingIntent;
 import 	android.content.Intent;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
 
 import android.util.Log;
@@ -70,11 +43,9 @@ import android.widget.Toast;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup.LayoutParams;
 
 import android.content.SharedPreferences;
 
@@ -98,7 +69,8 @@ public class MobileWebCam extends CamActivity
     private static final int MENU_SET_EXPOSURE = 8;
     private static final int MENU_SET_FLASH = 9;
     private static final int MENU_SETTINGS = 10;
-    private static final int MENU_SHUTDOWN = 11;
+    private static final int MENU_CONFIGURE_NIGHT = 11;
+    private static final int MENU_SHUTDOWN = 12;
 
 	public static int gUploadingCount = 0;
 	public static int gPictureCounter = 0;
@@ -107,7 +79,7 @@ public class MobileWebCam extends CamActivity
 	public static boolean gInSettings = false;
 	
 	public static long gLastMotionTime = 0; 
-	public static long gLastMotionKeepAliveTime = 0; 
+	public static long gLastMotionKeepAliveTime = 0;
 	
 	public static int gCurLogMessage = 0;
 	public static String[] gLogMessages = new String[16];
@@ -147,15 +119,17 @@ public class MobileWebCam extends CamActivity
 
 		log += "Date and time: " + new Date().toString() + "\r\n";
 
-		log += WorkImage.getBatteryInfo(c, "Battery %d%% %.1f\370C") + "\r\n";
+		log += WorkImage.getBatteryInfo(c, "Battery %d%% %.1f\248C") + "\r\n";
 
 		if(settings.mStoreGPS || settings.mImprintGPS)
 		{
 			String lat = String.format(Locale.US, "%f", WorkImage.gLatitude);
 			String lon = String.format(Locale.US, "%f", WorkImage.gLongitude);
+			String alt = String.format(Locale.US, "%f", WorkImage.gAltitude);
 			log += "Latitude: " + lat + "\r\n";
 			log += "Longitude: " + lon + "\r\n";
-			log += "http://maps.google.com/maps?q=" + lat + "," + lon + "+(MobileWebCam+Location)&z=18&ll=" + lat + "," + lon;
+			log += "Altitude: " + alt + "\r\n";
+			log += "http://maps.google.com/maps?q=" + lat + "," + lon + "+(MobileWebCam+Location)&z=18&ll=" + lat + "," + lon + "\r\n";
 		}
 		
 	    if(prefs.getBoolean("server_enabled", false))
@@ -182,15 +156,15 @@ public class MobileWebCam extends CamActivity
 			log += "Mode: " + c.getResources().getStringArray(R.array.entries_list_camera_mode)[3];
 		if(settings.mMotionDetect)
 			log += " detect motion";
-		if(settings.mNightAutoFlash && settings.mCameraFlash)
-			log += " autoflash";
-		if(settings.mNightAutoBrightness && settings.mNightAutoBrightnessEnabled)
+		if(settings.mNightAutoConfig && settings.mNightAutoConfigEnabled)
+			log += " night detected";
+		if(settings.mNightAutoBrightness && settings.IsNight())
 			log += " autobright";
 		if(settings.mNightIRLight)
 			log += " IR";
 		if(settings.mBroadcastReceiver.length() > 0)
 			log += "\r\nCustom Reiver: " + settings.mBroadcastReceiver + " " + MobileWebCam.gCustomReceiverActive; 
-		if(!settings.mNightAutoBrightnessEnabled)
+		if(!settings.mNightAutoBrightness || !settings.IsNight())
 			log += String.format("\r\nWhite Balance: %s, Color Effect: %s, Scene Mode: %s, Exposure Compensation: %d", settings.mWhiteBalance, settings.mColorEffect, settings.mSceneMode, settings.mExposureCompensation);
 		else
 			log += String.format("\r\nWhite Balance: %s, Color Effect: %s, Scene Mode: %s, Exposure Compensation: %d", settings.mNightAutoBrightnessWhitebalance, settings.mColorEffect, settings.mNightAutoBrightnessScenemode, settings.mNightAutoBrightnessExposure);
@@ -251,6 +225,13 @@ public class MobileWebCam extends CamActivity
 		else
 			addMenuItem(menu, MENU_SET_ON_OFFLINE, "Enable Camera", android.R.drawable.presence_offline, MenuItem.SHOW_AS_ACTION_ALWAYS);
 
+    	if(!mSettings.mURL.equals(mSettings.mDefaulturl) && mSettings.mUploadPictures)
+		{
+			if(mSettings.mEmailReceiverAddress.length() > 0 && mSettings.mMailPictures)
+				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_send, MenuItem.SHOW_AS_ACTION_ALWAYS);
+			else
+				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_share, MenuItem.SHOW_AS_ACTION_ALWAYS);
+		}
 		if(mSettings.mMode == Mode.MANUAL || mSettings.mMode == Mode.NORMAL)
 			addMenuItem(menu, MENU_SHARE_IMAGE, "Share Image", android.R.drawable.ic_menu_gallery, MenuItem.SHOW_AS_ACTION_ALWAYS);
     	
@@ -277,6 +258,8 @@ public class MobileWebCam extends CamActivity
 
     	    	if(NewCameraFunctions.isFlashSupported(params))
     	    		addMenuItem(menu, MENU_SET_FLASH, "Toggle Camera Flashlight", android.R.drawable.ic_dialog_alert, MenuItem.SHOW_AS_ACTION_IF_ROOM);
+
+    			addMenuItem(menu, MENU_CONFIGURE_NIGHT, "Toggle Day/Night Settings", android.R.drawable.ic_menu_day, MenuItem.SHOW_AS_ACTION_IF_ROOM);
     		}
     	}
 
@@ -293,13 +276,21 @@ public class MobileWebCam extends CamActivity
      *         otherwise
      */
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+    	final String nightsettings = mSettings.getNightPreferencesPostfix();
+    	
         switch (item.getItemId())
         {
 	        case MENU_SHARE_URL:
 	        	{
 					final Intent shareIntent = new Intent(android.content.Intent.ACTION_SEND);
 					shareIntent.setType("plain/text");
+					if(mSettings.mEmailReceiverAddress.length() > 0)
+						shareIntent.putExtra(android.content.Intent.EXTRA_EMAIL, new String[] { mSettings.mEmailReceiverAddress });
+					if(mSettings.mEmailSubject.length() > 0)
+						shareIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, mSettings.mEmailSubject);
+					shareIntent.putExtra(android.content.Intent.EXTRA_TEXT, mSettings.mURL.substring(0, mSettings.mURL.lastIndexOf("/") + 1));
 					MobileWebCam.this.startActivity(Intent.createChooser(shareIntent, "Share URL ..."));
  
 					return true;
@@ -325,7 +316,7 @@ public class MobileWebCam extends CamActivity
 		        
 	        	HoneyCombFunctions.invalidateOptionsMenu(MobileWebCam.this);
 		        
-	        	return true;
+	        	return true;	        	
 	        	
 	        case MENU_SET_ZOOM:
 		        {
@@ -345,12 +336,9 @@ public class MobileWebCam extends CamActivity
 							if(fromUser)
 							{
 			                    mSettings.mZoom = progress;
-					        	SharedPreferences.Editor edit = mPrefs.edit();
-					        	edit.putString("zoom", "" + mSettings.mZoom);
-					        	edit.commit();
 					        	
 								if(mPreview != null && mPreview.mCamera != null)
-									mSettings.SetCameraParameters(mPreview.mCamera);
+									mSettings.SetCameraParameters(mPreview.mCamera, true);
 							}
 						}
 
@@ -362,6 +350,9 @@ public class MobileWebCam extends CamActivity
 						@Override
 						public void onStopTrackingTouch(SeekBar seekBar)
 						{
+				        	SharedPreferences.Editor edit = mPrefs.edit();
+				        	edit.putString("zoom" + nightsettings, "" + mSettings.mZoom);
+				        	edit.commit();
 						}});
 		            layout.addView(seek); 
 /*		            TextView text = new TextView(this); 
@@ -397,12 +388,9 @@ public class MobileWebCam extends CamActivity
 							if(fromUser)
 							{
 			                    mSettings.mExposureCompensation = progress;
-					        	SharedPreferences.Editor edit = mPrefs.edit();
-					        	edit.putString("exposurecompensation", "" + mSettings.mExposureCompensation);
-					        	edit.commit();
 					        	
 								if(mPreview != null && mPreview.mCamera != null)
-									mSettings.SetCameraParameters(mPreview.mCamera);
+									mSettings.SetCameraParameters(mPreview.mCamera, true);
 							}
 						}
 	
@@ -414,6 +402,9 @@ public class MobileWebCam extends CamActivity
 						@Override
 						public void onStopTrackingTouch(SeekBar seekBar)
 						{
+				        	SharedPreferences.Editor edit = mPrefs.edit();
+				        	edit.putString("exposurecompensation" + nightsettings, "" + mSettings.mExposureCompensation);
+				        	edit.commit();
 						}});
 		            layout.addView(seek); 
 		            builder.setView(layout); 
@@ -443,11 +434,11 @@ public class MobileWebCam extends CamActivity
 						Toast.makeText(MobileWebCam.this, mSettings.mWhiteBalance, Toast.LENGTH_SHORT).show();
 
 			        	SharedPreferences.Editor edit = mPrefs.edit();
-			        	edit.putString("whitebalance", "" + mSettings.mWhiteBalance);
+			        	edit.putString("whitebalance" + nightsettings, "" + mSettings.mWhiteBalance);
 			        	edit.commit();
 
 						if(mPreview != null && mPreview.mCamera != null)
-							mSettings.SetCameraParameters(mPreview.mCamera);
+							mSettings.SetCameraParameters(mPreview.mCamera, true);
 	                }
 	            }).show();
 
@@ -470,11 +461,11 @@ public class MobileWebCam extends CamActivity
 						Toast.makeText(MobileWebCam.this, mSettings.mSceneMode, Toast.LENGTH_SHORT).show();
 
 						SharedPreferences.Editor edit = mPrefs.edit();
-			        	edit.putString("scenemode", "" + mSettings.mSceneMode);
+			        	edit.putString("scenemode" + nightsettings, "" + mSettings.mSceneMode);
 			        	edit.commit();
 
 						if(mPreview != null && mPreview.mCamera != null)
-							mSettings.SetCameraParameters(mPreview.mCamera);
+							mSettings.SetCameraParameters(mPreview.mCamera, true);
 	                }
 	            }).show();
 
@@ -499,11 +490,11 @@ public class MobileWebCam extends CamActivity
 							Toast.makeText(MobileWebCam.this, mSettings.mColorEffect, Toast.LENGTH_SHORT).show();
 	
 							SharedPreferences.Editor edit = mPrefs.edit();
-		    	        	edit.putString("coloreffect", "" + mSettings.mColorEffect);
+		    	        	edit.putString("coloreffect" + nightsettings, "" + mSettings.mColorEffect);
 		    	        	edit.commit();
 	
 							if(mPreview != null && mPreview.mCamera != null)
-								mSettings.SetCameraParameters(mPreview.mCamera);
+								mSettings.SetCameraParameters(mPreview.mCamera, true);
 		                }
 		            }).show();
 	        	}
@@ -516,11 +507,11 @@ public class MobileWebCam extends CamActivity
 		        	mSettings.mCameraFlash = !mSettings.mCameraFlash;
 		        	
 		        	SharedPreferences.Editor edit = mPrefs.edit();
-		        	edit.putBoolean("cam_flash", mSettings.mCameraFlash);
+		        	edit.putBoolean("cam_flash" + nightsettings, mSettings.mCameraFlash);
 		        	edit.commit();
 		        	
 					if(mPreview != null && mPreview.mCamera != null)
-						mSettings.SetCameraParameters(mPreview.mCamera);
+						mSettings.SetCameraParameters(mPreview.mCamera, true);
 		        }
 		        return true;
 
@@ -545,6 +536,27 @@ public class MobileWebCam extends CamActivity
 	        	HoneyCombFunctions.invalidateOptionsMenu(MobileWebCam.this);
 	        	
 	        	return true;
+	        	
+	        case MENU_CONFIGURE_NIGHT:
+		        {
+		        	mSettings.mSetNightConfiguration = !mSettings.mSetNightConfiguration;
+		        	
+		        	SharedPreferences.Editor edit = mPrefs.edit();
+		        	edit.putBoolean("cam_nightconfiguration", mSettings.mSetNightConfiguration);
+		        	edit.commit();
+		        }
+		        
+				if(mPreview != null && mPreview.mCamera != null)
+					mSettings.SetCameraParameters(mPreview.mCamera, true);
+				
+	        	HoneyCombFunctions.invalidateOptionsMenu(MobileWebCam.this);
+	        	
+				Toast.makeText(MobileWebCam.this,
+						mSettings.mSetNightConfiguration ? "Choose Night Settings now!" :
+							(mSettings.IsNight() ? "Disable night start/endtime first to configure day settings during night!" : "Choose Day Settings now!"),
+							Toast.LENGTH_LONG).show();
+
+	        	return true;	        	
 	        	
             case MENU_SETTINGS:
             	Intent settingsIntent = new Intent(getApplicationContext(), SettingsTabActivity.class);
@@ -574,9 +586,6 @@ public class MobileWebCam extends CamActivity
         
         super.onCreate(savedInstanceState);
         
-		mPrefs.registerOnSharedPreferenceChangeListener(this);            
-        onSharedPreferenceChanged(mPrefs, null);
-        
 //***        if(DEBUG_MOTIONDETECT)
         {
         	mDrawOnTop = (DrawOnTop)findViewById(R.id.drawontop);
@@ -585,8 +594,9 @@ public class MobileWebCam extends CamActivity
 		mTextView = (TextView)findViewById(R.id.status);
 		mCamNameView = (TextView)findViewById(R.id.camname);
 		mMotionTextView = (TextView)findViewById(R.id.motion);
-		
 		mMotionTextView.setVisibility(View.INVISIBLE);
+		mNightTextView = (TextView)findViewById(R.id.nightsettings);
+		mNightTextView.setVisibility(View.INVISIBLE);
 		mTextViewFrame = (LinearLayout)findViewById(R.id.statusframe);
 		mCamNameViewFrame = (RelativeLayout)findViewById(R.id.ipaddrframe);
 		mCamNameViewFrame.setBackgroundColor(mSettings.mTextBackgroundColor);
@@ -619,14 +629,13 @@ public class MobileWebCam extends CamActivity
  			}
  		});        
         
-		TextView camname = (TextView)findViewById(R.id.camname);
-		if(camname != null)
+		if(mCamNameView != null)
 		{
 			String info = mPrefs.getString("imprint_text", "mobilewebcam");
 			if(info == "mobilewebcam")
-				camname.setText("");
+				mCamNameView.setText("");
 			else
-				camname.setText(info);
+				mCamNameView.setText(info);
 		}
 
 		TextView iptext = (TextView)findViewById(R.id.ipaddr);
@@ -645,6 +654,9 @@ public class MobileWebCam extends CamActivity
 				iptext.setText("");
 		}
         
+		mPrefs.registerOnSharedPreferenceChangeListener(this);            
+        onSharedPreferenceChanged(mPrefs, null);
+
         MobileWebCamHttpService.start(MobileWebCam.this);
     }
     
@@ -815,12 +827,7 @@ public class MobileWebCam extends CamActivity
 			gLastMotionTime = System.currentTimeMillis(); // no immediate detect
 	        
 			if(mMotionTextView != null)
-			{
-				if(mSettings.mMotionDetect && DEBUG_MOTIONDETECT)
-					mMotionTextView.setVisibility(View.VISIBLE);            		
-				else
-					mMotionTextView.setVisibility(View.INVISIBLE);
-			}
+				mMotionTextView.setVisibility(mSettings.mMotionDetect/* && DEBUG_MOTIONDETECT */ ? View.VISIBLE : View.INVISIBLE);            		
     	}
     	if(key == null || key.equals("cam_broadcast_activation"))
     	{
@@ -833,6 +840,11 @@ public class MobileWebCam extends CamActivity
     		{
     			CustomReceiverService.stop(MobileWebCam.this);
     		}
+    	}
+    	if(key == null || key.equals("cam_nightconfiguration"))
+    	{
+			if(mNightTextView != null)
+				mNightTextView.setVisibility(mSettings.mSetNightConfiguration ? View.VISIBLE : View.INVISIBLE);
     	}
     }
 

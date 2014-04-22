@@ -123,7 +123,7 @@ public class RemoteControlSettings extends PreferenceActivity implements OnShare
 					}
 				}
 			}
-			catch (SocketException ex)
+			catch (Exception ex)
 			{
 				Log.e("MobileWebCam", ex.toString());
 			}
