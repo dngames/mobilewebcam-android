@@ -59,6 +59,26 @@ public class UploadSetup extends PreferenceActivity implements OnSharedPreferenc
 	             return true;
 	         }
         });
+
+        getPreferenceManager().findPreference("opensmartcam_setup").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+	         @Override
+	         public boolean onPreferenceClick(Preference preference) {
+	        	 Intent intent = new Intent(Intent.ACTION_VIEW);
+	        	 intent.setData(Uri.parse("https://www.opensmartcam.com"));
+	             startActivity(intent);
+	             return true;
+	         }
+      });
+
+       getPreferenceManager().findPreference("sensr_setup").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+	         @Override
+	         public boolean onPreferenceClick(Preference preference) {
+	        	 Intent intent = new Intent(Intent.ACTION_VIEW);
+	        	 intent.setData(Uri.parse("https://sensr.net/?aff_id=bdemk9c"));
+	             startActivity(intent);
+	             return true;
+	         }
+       });        
 	 }
 
      public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
