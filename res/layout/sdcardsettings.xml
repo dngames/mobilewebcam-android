@@ -30,9 +30,17 @@
 			android:scrollHorizontally="true"
 			android:singleLine="true"/>
 		
+	    <CheckBoxPreference
+			android:key="secondary_sd"
+			android:title="Other SD"
+			android:summary="For devices with the removable sdcard as a secondary sd enable this and specify the full storage path. Example: extSdCard/MobileWebCam/ for Galaxy Camera"
+			android:defaultValue="false"
+			/>		
+		
 		<EditTextPreference
             android:key="sdcard_keepoldpics"
-            android:summary="Specify the number of old pictures to keep. Attention if you have other pictures in the sdcard directory specified! They will be deleted!"
+			android:title="Limit Pictures"
+            android:summary="Specify the number of old pictures to keep (0 = all). Attention if you have other pictures in the sdcard directory specified! They will be deleted!"
             android:defaultValue="0"
             android:inputType="number"
             android:scrollHorizontally="true"

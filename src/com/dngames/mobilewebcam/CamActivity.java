@@ -47,6 +47,7 @@ public class CamActivity extends Activity
 	public TextView mTextView = null;
 	public TextView mCamNameView = null;
 	public TextView mMotionTextView = null;	
+	public TextView mNightTextView = null;	
 	public LinearLayout mTextViewFrame = null;
 	public RelativeLayout mCamNameViewFrame = null;
     

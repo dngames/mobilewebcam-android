@@ -4,20 +4,15 @@ import java.io.IOException;
 import java.util.Calendar;
 
 import android.content.Context;
-import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Bundle;
 import android.telephony.gsm.SmsManager;
-import android.view.View;
-import android.widget.EditText;
 import android.widget.Toast;
 import android.content.BroadcastReceiver;
 import android.content.SharedPreferences;
 import android.telephony.gsm.SmsMessage;
-
-import android.util.Log;
 
 public class SMSReceiver extends BroadcastReceiver
 {
@@ -45,23 +40,19 @@ public class SMSReceiver extends BroadcastReceiver
 					str += msgs[i].getMessageBody().toString();
 				}
 				
+				MobileWebCam.LogI("SMS: " + str);
+				
 	    		if(str.startsWith("start") || str.startsWith("stop"))
 	    		{
-					/* Logger Debug-Output */
-					Log.i("MobileWebCam", "onReceiveIntent: " + str);
-	
 					abortBroadcast();
 
 					if(str.startsWith("start"))
-						ControlReceiver.Start(context, prefs);
+						ControlReceiver.Start(context, prefs, "sms");
 					else if(str.startsWith("stop"))
 						ControlReceiver.Stop(context, prefs);
 	    		}
 	    		else if(str.startsWith("refresh"))
 	    		{
-					/* Logger Debug-Output */
-					Log.i("MobileWebCam", "onReceiveIntent: " + str);
-	
 					abortBroadcast();
 					
 					Toast.makeText(context, "refresh sms command", Toast.LENGTH_LONG).show();

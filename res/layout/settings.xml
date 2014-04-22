@@ -243,7 +243,7 @@
 		    <EditTextPreference
 				android:key="imprint_statusinfo"
 				android:title="Battery level/Temperature"
-				android:summary="Print battery level and temperature."
+				android:summary="Print battery level and temperature. If you leave away the '°C' temp will be in Fahrenheit. You can also completely remove the temperatures for phones which do not provide correct values."
 		        android:inputType="text"
 				android:defaultValue="Battery %03d%% %3.1f°C"
 				android:hint="Battery %03d%% %3.1f°C"

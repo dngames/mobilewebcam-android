@@ -18,24 +18,13 @@ package com.dngames.mobilewebcam;
 import android.content.Context;
 import android.content.BroadcastReceiver;
 import android.content.SharedPreferences;
-import android.app.AlarmManager;
 
 import java.lang.ref.WeakReference;
-import java.util.Calendar;
-import java.util.Date;
 
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
 
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.widget.Toast;
-import android.net.ConnectivityManager;
-import android.net.wifi.WifiManager;
-import android.os.Debug;
-import android.os.PowerManager;
-import android.util.Log;
-import android.content.SharedPreferences;
 import android.app.Notification;
 import android.app.NotificationManager;
 
@@ -50,13 +39,16 @@ public class PhotoReceiver extends BroadcastReceiver
 		if(!prefs.getBoolean("mobilewebcam_enabled", true))
 			return;
 		
-		if(prefs.getBoolean("lowbattery_pause", false) && WorkImage.getBatteryLevel(context) < 15)
+		if(prefs.getBoolean("lowbattery_pause", false) && WorkImage.getBatteryLevel(context) < PhotoSettings.gLowBatteryPower)
 		{
 			MobileWebCam.LogI("Battery low ... pause");
 			return;
 		}
 		
-		mBGPhoto.mContext = new WeakReference<Context>(context);
+		synchronized(BackgroundPhoto.class)
+		{
+			mBGPhoto.mContext = new WeakReference<Context>(context);
+		}
 		
 		StartNotification(context);
 		
@@ -69,7 +61,7 @@ public class PhotoReceiver extends BroadcastReceiver
 		}
 		
         PhotoSettings.Mode mode = PhotoSettings.getCamMode(prefs);
-        mBGPhoto.TakePhoto(context, prefs, mode);		
+        mBGPhoto.TakePhoto(context, prefs, mode, intent.getStringExtra("event"));		
 	}
 	
 	public static final int ACTIVE_ID = 1;

@@ -17,15 +17,11 @@ package com.dngames.mobilewebcam;
 
 import java.io.IOException;
 
-import com.dngames.mobilewebcam.PhotoService.UploadFTPPhotoTask;
-
-import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.preference.PreferenceActivity;
-import android.view.Window;
-import android.view.WindowManager;
+import android.util.Log;
 
 public class FTPSettings extends PreferenceActivity implements OnSharedPreferenceChangeListener
 {
@@ -49,25 +45,54 @@ public class FTPSettings extends PreferenceActivity implements OnSharedPreferenc
  		// need to listen for ftp settings changes and reconnect later
     	if(key == "ftp_keep_open")
     	{
-	 		if(UploadFTPPhotoTask.client != null)
+	 		if(UploadFTPPhoto.FTPConnection.session != null)
 	 		{
 	 			try
 	 			{
-	 				UploadFTPPhotoTask.client.abort();
-	 				UploadFTPPhotoTask.client.disconnect();
+		 			if(UploadFTPPhoto.FTPConnection.channelSftp != null)
+		 				UploadFTPPhoto.FTPConnection.channelSftp.disconnect();
+	 			}
+	 			catch (Exception e)
+	 			{
+	 				e.printStackTrace();
+	 			}
+	 			UploadFTPPhoto.FTPConnection.session = null;
+	 		}
+	 		if(UploadFTPPhoto.FTPConnection.client != null)
+	 		{
+	 			try
+	 			{
+	 				UploadFTPPhoto.FTPConnection.client.abort();
+	 				UploadFTPPhoto.FTPConnection.client.disconnect();
 	 			}
 	 			catch (IOException e)
 	 			{
 	 				e.printStackTrace();
 	 			}
-	 			UploadFTPPhotoTask.client = null;
+	 			UploadFTPPhoto.FTPConnection.client = null;
 	 		}
     	}
      }
      
     @Override
-    protected void onDestroy() {
+    protected void onDestroy()
+    {
         getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
         super.onDestroy();
     }
+    
+	@Override
+	protected void onResume()
+	{
+		super.onResume();
+
+		MobileWebCam.gInSettings = true;
+	}    
+    
+    public void onPause()
+    {
+    	super.onPause();
+    	
+		MobileWebCam.gInSettings = false;
+    }    
 };

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:myapp="http://schemas.android.com/apk/res/com.dngames.mobilewebcam"
+	xmlns:myapp="http://schemas.android.com/apk/res-auto"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
 	android:orientation="vertical"
@@ -72,8 +72,7 @@
 		    android:layout_marginLeft="10dip"
 		    android:layout_marginRight="10dip"
 	    	android:layout_marginTop="2dip"
-	    	android:layout_marginBottom="2dip"
-	    	android:layout_toRightOf="@id/ipaddrframe"/>
+	    	android:layout_marginBottom="2dip"/>
 	</RelativeLayout>
 			
 	<LinearLayout
@@ -97,6 +96,18 @@
 	    	android:layout_marginTop="2dip"
 	    	android:layout_marginBottom="2dip"/>
 	</LinearLayout>
+	
+  <TextView android:id="@+id/nightsettings"
+  	android:visibility="visible"
+    android:text="Configure night settings!" 
+    android:shadowColor="#FF000000" 
+    android:textColor="#FF808080" 
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_centerHorizontal="true"
+    android:layout_below="@id/ipaddrframe"
+    android:layout_marginTop="10dip"
+    android:textSize="20dip"/>	
 
   <TextView android:id="@+id/motion"
   	android:visibility="visible"

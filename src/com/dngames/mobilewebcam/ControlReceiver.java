@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 public class ControlReceiver extends BroadcastReceiver
 {
+	public static boolean MailEventTriggered = false;
 	public static AtomicInteger PhotoCount = new AtomicInteger(0);
 	public static long LastEventTime = 0;
 
@@ -34,7 +35,7 @@ public class ControlReceiver extends BroadcastReceiver
 		SharedPreferences prefs = context.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
 		if(intent.getAction().equals("com.dngames.mobilewebcam.START"))
 		{
-			Start(context, prefs);
+			Start(context, prefs, intent.getStringExtra("event"));
 		}
 		else if(intent.getAction().equals("com.dngames.mobilewebcam.STOP"))
 		{
@@ -42,28 +43,15 @@ public class ControlReceiver extends BroadcastReceiver
 		}
 		else if(intent.getAction().equals("com.dngames.mobilewebcam.PHOTO"))
 		{
-			int default_cnt = PhotoSettings.getEditInt(context, prefs, "cam_intents_repeat", 1);
-			int cnt = default_cnt;
-			if(intent.hasExtra("count"))
-			{
-				Bundle extras = intent.getExtras();
-				Object val = extras.get("count");
-				try
-				{
-					cnt = Integer.parseInt(val.toString());
-				}
-				catch(NumberFormatException e)
-				{
-					e.printStackTrace();
-					MobileWebCam.LogE("Error: com.dngames.mobilewebcam.PHOTO intent sent with wrong extra int 'count'!");
-				}
-			}
+			Bundle extras = intent.getExtras();
+			String event = extras.getString("event");
+			int cnt = extras.getInt("count", PhotoSettings.getEditInt(context, prefs, "cam_intents_repeat", 1));
 
-			EventPhoto(context, prefs, cnt);
+			EventPhoto(context, prefs, cnt, event);
 		}
     }
     
-    public static void EventPhoto(Context context, SharedPreferences prefs, int cnt)
+    public static void EventPhoto(Context context, SharedPreferences prefs, int cnt, String event)
     {
 		long curtime = System.currentTimeMillis();
 
@@ -74,6 +62,9 @@ public class ControlReceiver extends BroadcastReceiver
 			return;
 		}
 		
+    	triggerpause = PhotoSettings.getEditInt(context, prefs, "email_pausetime", 300) * 1000;
+		if(curtime - LastEventTime > triggerpause)
+			MailEventTriggered = true; // check if last trigger has been long enough
 		LastEventTime = curtime;
 
 		PhotoCount.set(cnt);
@@ -83,6 +74,7 @@ public class ControlReceiver extends BroadcastReceiver
 		{
 			AlarmManager alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 			Intent i = new Intent(context, PhotoAlarmReceiver.class);
+			i.putExtra("event", event);
 			PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
 			alarmMgr.cancel(pendingIntent);
 			Calendar time = Calendar.getInstance();
@@ -95,11 +87,12 @@ public class ControlReceiver extends BroadcastReceiver
 			Intent i = new Intent(context, MobileWebCam.class);
 			i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 			i.putExtra("command", "photo");
+			i.putExtra("event", event);
 			context.startActivity(i);
 		}
     }
 
-	public static void Start(Context context, SharedPreferences prefs)
+	public static void Start(Context context, SharedPreferences prefs, String event)
 	{
 		SharedPreferences.Editor edit = prefs.edit();
 		edit.putBoolean("mobilewebcam_enabled", true);
@@ -112,6 +105,7 @@ public class ControlReceiver extends BroadcastReceiver
 			{
 				AlarmManager alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 				Intent i = new Intent(context, PhotoAlarmReceiver.class);
+				i.putExtra("event", event);
 				PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, i, 0);
 				alarmMgr.cancel(pendingIntent);
 				Calendar time = Calendar.getInstance();
@@ -126,6 +120,7 @@ public class ControlReceiver extends BroadcastReceiver
 			Intent i = new Intent(context, MobileWebCam.class);
 			i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 			i.putExtra("command", "start");
+			i.putExtra("event", event);
 			context.startActivity(i);
 			break;
 		}

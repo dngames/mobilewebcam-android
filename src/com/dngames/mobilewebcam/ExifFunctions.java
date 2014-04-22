@@ -36,10 +36,10 @@ public class ExifFunctions
 		}
 	}
 
-	public static void addCoordinates(String filename, double lat, double lon)
+	public static void addCoordinates(String filename, double lat, double lon, double alt)
 	{
 		if(mExifAvailable)
-			ExifWrapper.addCoordinates(filename, lat, lon);
+			ExifWrapper.addCoordinates(filename, lat, lon, alt);
 	}
 	
 	public static Typeface createTypefaceFromFile(String path)

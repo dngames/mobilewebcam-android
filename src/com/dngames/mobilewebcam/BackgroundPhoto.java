@@ -16,6 +16,7 @@ package com.dngames.mobilewebcam;
 
 import java.lang.ref.WeakReference;
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
 
@@ -26,6 +27,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
@@ -35,7 +37,7 @@ public class BackgroundPhoto implements ITextUpdater
 {
 	WeakReference<Context> mContext = null;
 	
-	public void TakePhoto(Context context, SharedPreferences prefs, PhotoSettings.Mode mode)
+	public void TakePhoto(Context context, SharedPreferences prefs, PhotoSettings.Mode mode, String event)
 	{
 		boolean ignoreinactivity = false; 
 		long sincelastalive = System.currentTimeMillis() - MobileWebCam.gLastMotionKeepAliveTime;
@@ -75,7 +77,7 @@ public class BackgroundPhoto implements ITextUpdater
 					}		
 				}
 				
-				new PhotoService(context, this).TakePicture();
+				new PhotoService(context, this).TakePicture(event);
 			}
 			else if(!MobileWebCam.gInSettings)
 			{
@@ -84,6 +86,7 @@ public class BackgroundPhoto implements ITextUpdater
 					Intent i = new Intent(context, MobileWebCam.class);
 					i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 					i.putExtra("alarm", "photo");
+					i.putExtra("event", event);
 					context.startActivity(i);
 				}
 				else if(mode == Mode.BACKGROUND)
@@ -91,16 +94,9 @@ public class BackgroundPhoto implements ITextUpdater
 					Intent i = new Intent(context, TakeHiddenPicture.class);
 					i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_FROM_BACKGROUND);
 					i.putExtra("alarm", "photo");
+					i.putExtra("event", event);
 					context.startActivity(i);
 				}
-				else
-				{
-					JobFinished();
-				}
-			}
-			else
-			{
-				JobFinished();
 			}
 		}
 	}	
@@ -111,18 +107,32 @@ public class BackgroundPhoto implements ITextUpdater
 		if(Preview.gPreview != null)
 			Preview.gPreview.UpdateText();
 	}
+	
+	// do a toast on the main thread from wherever we are!
+	public static void Toast(final Context c, final String msg, final int length)
+	{
+		Handler h = new Handler(c.getMainLooper());
+	    h.post(new Runnable()
+	    {
+	        @Override
+	        public void run()
+	        {
+	             Toast.makeText(c, msg, Toast.LENGTH_LONG).show();
+	        }
+	    });
+	}	
 
 	@Override
-	public void Toast(String msg, int length)
+	public void Toast(final String msg, int length)
 	{
-		Context c = mContext.get();
-		if(c != null)
+		synchronized(BackgroundPhoto.class)
 		{
-			SharedPreferences prefs = mContext.get().getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
-			if(!prefs.getBoolean("no_messages", false))
+			final Context c = mContext.get();
+			if(c != null)
 			{
-				if(mContext.get() != null)
-					Toast.makeText(mContext.get(), msg, length).show();
+				SharedPreferences prefs = mContext.get().getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
+				if(!prefs.getBoolean("no_messages", false))
+					Toast(c, msg, Toast.LENGTH_LONG);
 			}
 		}
 		Log.i("MobileWebCam", "BackgroundPhoto: " + msg);
@@ -138,13 +148,35 @@ public class BackgroundPhoto implements ITextUpdater
 	private static PowerManager.WakeLock mWakeLock = null;
 	private static WifiManager.WifiLock mWifiLock = null;
 	
+	private static AtomicInteger JobRefCount = new AtomicInteger(0);
+	
 	@Override
-	public void JobFinished()
+	public synchronized int JobStarted()
 	{
-		if(Preview.gPreview != null)
-			Preview.gPreview.JobFinished();
+		Log.i("MobileWebCam", "JobStarted " + JobRefCount.get());
+		return JobRefCount.getAndIncrement();
+	}
+	
+	@Override
+	public synchronized int JobFinished()
+	{
+		Log.i("MobileWebCam", "JobFinished " + JobRefCount.get());
 		
-		releaseWakeLocks();
+		int cnt = JobRefCount.decrementAndGet();
+		if(cnt <= 0)
+		{
+			Log.i("MobileWebCam", "Background Done!");
+			
+			if(Preview.gPreview != null)
+				Preview.gPreview.JobFinished();
+			
+			releaseWakeLocks();
+			
+			if(Preview.mPhotoLock.getAndSet(false))
+				Log.v("MobileWebCam", "PhotoLock released because backgroundphoto job is finished!");		
+		}
+		
+		return cnt;
 	}
 
 	public static void releaseWakeLocks()

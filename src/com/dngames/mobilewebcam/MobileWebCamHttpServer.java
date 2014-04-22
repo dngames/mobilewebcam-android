@@ -250,13 +250,13 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 			msg += "Mode: " + mContext.getResources().getStringArray(R.array.entries_list_camera_mode)[3];
 		if(mSettings.mMotionDetect)
 			msg += " detect motion";
-		if(mSettings.mNightAutoFlash && mSettings.mCameraFlash)
-			msg += " autoflash";
-		if(mSettings.mNightAutoBrightness && mSettings.mNightAutoBrightnessEnabled)
+		if(mSettings.mNightAutoConfig && mSettings.mNightAutoConfigEnabled)
+			msg += " night detected";
+		if(mSettings.mNightAutoBrightness && mSettings.IsNight())
 			msg += " autobright";
 		if(mSettings.mNightIRLight)
 			msg += " IR";
-		if(!mSettings.mNightAutoBrightnessEnabled)
+		if(!mSettings.mNightAutoBrightness || !mSettings.IsNight())
 			msg += String.format("<br>White Balance: %s, Color Effect: %s, Scene Mode: %s, Exposure Compensation: %d", mSettings.mWhiteBalance, mSettings.mColorEffect, mSettings.mSceneMode, mSettings.mExposureCompensation);
 		else
 			msg += String.format("<br>White Balance: %s, Color Effect: %s, Scene Mode: %s, Exposure Compensation: %d", mSettings.mNightAutoBrightnessWhitebalance, mSettings.mColorEffect, mSettings.mNightAutoBrightnessScenemode, mSettings.mNightAutoBrightnessExposure);
@@ -298,6 +298,16 @@ public class MobileWebCamHttpServer extends NanoHTTPD
 		
 		msg += GetPicture(active);
 		
+		if(mSettings.mURL.length() > 0 && mSettings.mUploadPictures)
+		{
+			String picurl = mSettings.mURL.substring(0, mSettings.mURL.lastIndexOf("/") + 1);
+			String url = URLEncoder.encode(picurl);
+			String info = URLEncoder.encode(mSettings.mImprintText);
+			msg += "<p>Share your camera picture on <a href=\"https://plus.google.com/share?url=" + url + "\" onclick=\"javascript:window.open(this.href, '', 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=600,width=600');return false;\"><img src=\"https://www.gstatic.com/images/icons/gplus-16.png\" alt=\"Share on Google+\"/></a>";
+			msg += " or <a href='https://www.facebook.com/sharer.php?u=" + url + "&t=" + info + "'>facebook</a>";
+			msg += " or <a href=\"https://twitter.com/share\" class=\"twitter-share-button\" data-url=\"" + url + "\" data-text=\"" + info + " " + picurl + "\">Tweet</a><script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=\"//platform.twitter.com/widgets.js\";fjs.parentNode.insertBefore(js,fjs);}}(document,\"script\",\"twitter-wjs\");</script></p>";
+		}
+
 		msg += "</td></tr></table>";
 		
 		msg += "<hr>";

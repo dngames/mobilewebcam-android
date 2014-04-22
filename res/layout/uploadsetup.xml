@@ -18,4 +18,24 @@
         android:title="SDCard"/>
 						
 	</PreferenceCategory>
+	        
+    <PreferenceCategory
+		android:title="Easy Setup">
+    
+		<PreferenceScreen
+		    android:key="opensmartcam_setup"
+			android:title="opensmartcam.com"
+			android:icon="@android:drawable/star_on"
+			android:enabled="true"	            
+ 			android:summary="Have a look - they offer free webspace for your camera. Setup with MobileWebCam is done automatically! (I do not get paid for this!)"/>
+			
+		<PreferenceScreen
+		    android:key="sensr_setup"
+			android:title="SENSR.NET"
+			android:icon="@android:drawable/star_off"
+			android:summary="Go look at sensr.net - they offer easy webspace for cameras. Setup with MobileWebCam http or ftp is quite easy! This is an affiliate link so please use this link if you register/pay and I might earn something!"
+			android:enabled="true"/>	            
+	    
+	</PreferenceCategory>        
+
 </PreferenceScreen>

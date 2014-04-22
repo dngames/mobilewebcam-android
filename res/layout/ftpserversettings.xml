@@ -45,7 +45,7 @@
 	  	<EditTextPreference
             android:key="ftp_keepoldpics"
             android:title="Rename old pictures"
-            android:summary="Specify the number of old pictures to keep"
+            android:summary="Specify the number of old pictures to keep. Large number will slow down ftp."
             android:defaultValue="0"
             android:inputType="number"
             android:scrollHorizontally="true"
@@ -56,7 +56,7 @@
 	<PreferenceCategory
 		android:title="FTP Server Setup">
 	  
-  <EditTextPreference
+		<EditTextPreference
             android:key="ftpserver_url"
             android:title="Server address"
             android:summary="Your webcam picture ftp server adress."

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <TabHost xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:myapp="http://schemas.android.com/apk/res/com.dngames.mobilewebcam"
+    xmlns:myapp="http://schemas.android.com/apk/res-auto"
     android:id="@android:id/tabhost"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
@@ -16,7 +16,8 @@
 		<LinearLayout
 		   android:id="@+id/adlayout"
 		   android:layout_width="fill_parent"
-		   android:layout_height="wrap_content"/>
+		   android:layout_height="wrap_content"
+		   android:orientation="vertical"/>
 
         <FrameLayout
             android:id="@android:id/tabcontent"

@@ -17,10 +17,7 @@ package com.dngames.mobilewebcam;
 
 import android.content.Context;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.IllegalFormatException;
@@ -41,24 +38,17 @@ import fakeawt.Dimension;
 import fakeawt.Rectangle;
 */
 import com.dngames.mobilewebcam.PhotoSettings.ImageScaleMode;
-import com.dngames.mobilewebcam.PhotoSettings.Mode;
 
-import android.content.Context;
-import android.view.WindowManager;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.ColorFilter;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Paint.Align;
 import android.graphics.Paint.FontMetrics;
-import android.graphics.Paint.FontMetricsInt;
 import android.graphics.Rect;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -67,31 +57,24 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.util.Log;
-import android.view.Display;
 
 import android.location.Address;
-import android.location.Geocoder;
-import android.location.Location;
 import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
-import android.os.Debug;
 import android.os.Looper;
 
 public class WorkImage implements Runnable
 {
-	private WorkImage()
-	{
-	}
-
-	public WorkImage(Context c, ITextUpdater tu, byte[] data, Camera.Size s, Date date)
+	public WorkImage(Context c, ITextUpdater tu, byte[] data, Camera.Size s, Date date, String event)
 	{
 		mTextUpdater = tu;
 		mContext = c;
 		mData = data;
 		size = s;
 		mDate = date;
+		mPhotoEvent = event;
 		
+		mTextUpdater.JobStarted();
 		mSettings = new PhotoSettings(c);
 	}
 	
@@ -99,6 +82,7 @@ public class WorkImage implements Runnable
 	private Context mContext = null;
 	private byte[] mData = null;
 	private Date mDate = null;
+	private String mPhotoEvent = null;
 	private static Bitmap gBmp = null;	
 	private Camera.Size size = null;
 	private PhotoSettings mSettings = null;
@@ -133,13 +117,24 @@ public class WorkImage implements Runnable
 		if (rawlevel >= 0 && bscale > 0)
 		    level = rawlevel / bscale;
 		String txt;
+		
 		try
 		{
-			txt = String.format(format, (int)(level * 100.0), (float)temp / 10.0f);
+			if(format.contains("°C"))
+			{
+				txt = String.format(format, (int)(level * 100.0), (float)temp / 10.0f);
+			}
+			else
+			{
+				// temp in fahrenheit
+				float fahrenheit = (float)(temp - 32) * (5f / 9.0f) / 10.0f;
+				txt = String.format(format, (int)(level * 100.0), (float)fahrenheit);
+			}
+			
 		}
 		catch(IllegalFormatException e)
 		{
-				txt = e.getMessage();
+			txt = e.getMessage();
 		}
 		
 		return txt;
@@ -381,8 +376,7 @@ public class WorkImage implements Runnable
 	{
 		if(mData == null)
 		{
-			Preview.mPhotoLock.set(false);
-			Log.v("MobileWebCam", "PhotoLock released!");
+			MobileWebCam.LogE("No data to work on from picture!");
 			mTextUpdater.JobFinished();
 			return;
 		}
@@ -596,25 +590,16 @@ public class WorkImage implements Runnable
 			// TODO: do night detection on own downsampled image from mData to 100x100 for all sizes if! gBmp == null
 			if(ControlReceiver.PhotoCount.get() <= 0) // only for the last of a burst detect and change settings
 			{
-				if(mSettings.mNightStartTime.equals(mSettings.mNightEndTime))
+				if(mSettings.mNightAutoConfig)
 				{
-					if(mSettings.mNightAutoFlash || mSettings.mNightAutoBrightness)
+					// detect if flash is required
+					boolean imagedark = isNightImage(gBmp);
+					Log.i("MobileWebCam", "Dark image: " + imagedark);
+					if(mSettings.mNightAutoConfig && mSettings.mNightAutoConfigEnabled != imagedark)
 					{
-						// detect if flash is required
-						boolean imagedark = isNightImage(gBmp);
-						MobileWebCam.LogI("Dark image: " + imagedark);
-						if(mSettings.mNightAutoFlash && mSettings.mNightAutoFlashEnabled != imagedark)
-						{
-							mSettings.setCameraFlash(imagedark, true);
-							// take next picture with changed flash!
-							MobileWebCam.LogI("flash auto changed");
-						}
-						else if(mSettings.mNightAutoBrightness && mSettings.mNightAutoBrightnessEnabled != imagedark)
-						{
-							// take next picture with changed settings if image dark!
-							mSettings.setCameraAutoNightBrightness(imagedark);
-							MobileWebCam.LogI("brightness auto changed");
-						}
+						mSettings.mNightAutoConfigEnabled = imagedark;
+						// take next picture with night settings
+						MobileWebCam.LogI("night settings auto changed");
 					}
 				}
 
@@ -623,12 +608,10 @@ public class WorkImage implements Runnable
 					if(isNightImage(gBmp) && !ignoreinactivity)
 					{
 						// drop dark images
-						Preview.mPhotoLock.set(false);
 						MobileWebCam.LogI("Dropping night image.");
-						Log.i("MobileWebCam", "PhotoLock released!");
-						mTextUpdater.JobFinished();
 						gBmp.recycle();
 						gBmp = null;
+						mTextUpdater.JobFinished();
 						return;
 					}
 				}
@@ -732,7 +715,7 @@ public class WorkImage implements Runnable
 					
 					p.reset();
 				}
-				else if(mSettings.mNightAutoBrightness && mSettings.mNightAutoBrightnessEnabled)
+				else if(mSettings.mNightAutoBrightness && mSettings.IsNight())
 				{
 			        ColorMatrix cm = new ColorMatrix();
 			        float contrast = mSettings.mNightAutoContrastFactor;
@@ -747,6 +730,8 @@ public class WorkImage implements Runnable
 			        	});
 			        p.setColorFilter(new ColorMatrixColorFilter(cm));
 					canvas.drawBitmap(gBmp, 0, 0, p);
+					
+					MobileWebCam.LogI("Processed night image (" + contrast + ", " + brightness + ", " + green + ")");
 					
 					p.reset();
 				}
@@ -772,25 +757,31 @@ public class WorkImage implements Runnable
 					}					
 				}
 				
-				if(mSettings.mImprintPicture && mSettings.mImprintBitmap != null)
+				if(mSettings.mImprintPicture)
 				{
-					Rect src = new Rect(0, 0, mSettings.mImprintBitmap.getWidth(), mSettings.mImprintBitmap.getHeight());
-					Rect dst = new Rect(0, 0, canvas.getWidth(), canvas.getHeight());
-
-					if(mSettings.mImprintPictureURL.length() > 0)
+					if(PhotoSettings.gImprintBitmap != null)
 					{
-						if(mSettings.mImprintPictureRefresh)
+						synchronized(PhotoSettings.gImprintBitmapLock)
 						{
-							// reload image!
-							// slow!
-							mSettings.DownloadImprintBitmap();
+							Rect src = new Rect(0, 0, PhotoSettings.gImprintBitmap.getWidth(), PhotoSettings.gImprintBitmap.getHeight());
+							Rect dst = new Rect(0, 0, canvas.getWidth(), canvas.getHeight());
+		
+							if(mSettings.mImprintPictureURL.length() > 0)
+							{
+								if(mSettings.mImprintPictureRefresh)
+								{
+									// reload image!
+									// slow!
+									mSettings.DownloadImprintBitmap();
+								}
+							}
+		
+							if(!mSettings.mImprintPictureStretch)
+								dst = new Rect(mSettings.mImprintPictureX, mSettings.mImprintPictureY, PhotoSettings.gImprintBitmap.getWidth(), PhotoSettings.gImprintBitmap.getHeight());
+							
+							canvas.drawBitmap(PhotoSettings.gImprintBitmap, src, dst, null);
 						}
 					}
-
-					if(!mSettings.mImprintPictureStretch)
-						dst = new Rect(mSettings.mImprintPictureX, mSettings.mImprintPictureY, mSettings.mImprintBitmap.getWidth(), mSettings.mImprintBitmap.getHeight());
-					
-					canvas.drawBitmap(mSettings.mImprintBitmap, src, dst, null);
 				}
 				
 				if(mSettings.mTextFontname.length() > 0)
@@ -837,14 +828,14 @@ public class WorkImage implements Runnable
 				
 				if(mSettings.mImprintStatusInfo.length() > 0)
 				{
-					String txt = getBatteryInfo(mContext, mSettings.mImprintStatusInfo);
+					String txt = getBatteryInfo(mContext, mSettings.mImprintStatusInfo) + (mSettings.mNightAutoBrightness && mSettings.IsNight() ? " night vision" : "");
         			DrawText(canvas, p, textsize, mSettings.mStatusInfoFontScale, txt, (float)mSettings.mStatusInfoX, (float)mSettings.mStatusInfoY, mSettings.mStatusInfoBackgroundLine, mSettings.mStatusInfoBackgroundColor, mSettings.mStatusInfoShadowColor, mSettings.mStatusInfoColor, mSettings.mStatusInfoAlign);
 				}
 				
 				if(mSettings.mImprintGPS)
 				{
 					// now unfortunately we have to wait for a location!
-/*					int cnt = 0;
+					int cnt = 0;
 					try
 					{
 						while(gLocation == null && cnt++ < 60)
@@ -856,12 +847,12 @@ public class WorkImage implements Runnable
 					catch (InterruptedException e)
 		            {
 		                e.printStackTrace();
-		            }*/
+		            }
 					if(gLocation == null)
 						mLocationListener.UseLastLocation();
 					locationManager.removeUpdates(mLocationListener);					
 					
-        			String txt = String.format(Locale.US, "%10f, %10f", gLatitude, gLongitude);
+        			String txt = String.format(Locale.US, "%10f, %10f, %4f", gLatitude, gLongitude, gAltitude);
         			if(mSettings.mImprintLocation && gLocation != null)
         				txt = gLocation;
         			DrawText(canvas, p, textsize, mSettings.mGPSFontScale, txt, (float)mSettings.mGPSX, (float)mSettings.mGPSY, mSettings.mGPSBackgroundLine, mSettings.mGPSBackgroundColor, mSettings.mGPSShadowColor, mSettings.mGPSColor, mSettings.mGPSAlign);
@@ -982,9 +973,9 @@ public class WorkImage implements Runnable
 				MobileWebCam.LogI("Picture " + MobileWebCam.gPictureCounter + " taken ... uploading now!");
 				
 				if(mSettings.mFTPPictures && (MobileWebCam.gPictureCounter % mSettings.mFTPFreq) == 0)
-					new PhotoService.UploadFTPPhotoTask(mContext, mTextUpdater, mSettings, mDate).execute(mData);
-				if(mSettings.mStorePictures && !PhotoService.SaveLocked.get() && (MobileWebCam.gPictureCounter % mSettings.mStoreFreq) == 0)
-					new PhotoService.SavePhotoTask(mContext, mTextUpdater, mSettings, mDate).execute(mData);
+					new UploadFTPPhoto(mContext, mTextUpdater, mSettings, mData, mDate, mPhotoEvent).start();
+				if(mSettings.mStorePictures && !SavePhoto.SaveLocked.get() && (MobileWebCam.gPictureCounter % mSettings.mStoreFreq) == 0)
+					new SavePhoto(mContext, mTextUpdater, mSettings, mData, mDate).start();
 			}
 			else
 			{
@@ -997,9 +988,8 @@ public class WorkImage implements Runnable
 		{
 			MobileWebCam.LogE("Skipped image of size 0!");
 		}
-		
-		Preview.mPhotoLock.set(false);
-		Log.v("MobileWebCam", "PhotoLock released!");
+
+		mTextUpdater.JobFinished();
 	}
 	
 	private void DrawText(Canvas canvas, Paint p, float textsize, float fntscale, String txt, float x, float y, boolean bgline, int bgcolor, int shadowcolor, int color, Paint.Align align)
@@ -1103,6 +1093,7 @@ public class WorkImage implements Runnable
 	private static float gLocationAccuracy = 0.0f;
 	public static double gLatitude;
 	public static double gLongitude;
+	public static double gAltitude;
 	
 	private class MyLocationListener implements LocationListener
 	{
@@ -1146,6 +1137,7 @@ public class WorkImage implements Runnable
 		{
 			gLatitude = location.getLatitude();
 			gLongitude = location.getLongitude();
+			gAltitude = location.getAltitude();
 			gLocation = "Unknown";
 			gLocationAccuracy = location.getAccuracy();
 			try

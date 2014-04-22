@@ -15,85 +15,47 @@
 
 package com.dngames.mobilewebcam;
 
-import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.content.IntentFilter;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.Bitmap.CompressFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
-import android.hardware.Camera.Size;
 import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
-import android.os.Bundle;
-import android.os.Debug;
 import android.os.Environment;
-import android.os.PowerManager;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
-import android.view.View;
-import android.view.SurfaceHolder.BadSurfaceTypeException;
 import android.view.SurfaceView;
-import android.view.ViewGroup;
-import android.widget.TextView;
 import java.util.Date;
 import android.util.AttributeSet;
 import android.view.OrientationEventListener;
-//***import android.graphics.ImageFormat;
-//***import android.graphics.YuvImage;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 import android.os.Handler;
 
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.URL;
-import java.net.UnknownHostException;
-
-import android.os.AsyncTask;
-import android.provider.MediaStore;
-
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.io.OutputStream;
+import java.util.concurrent.atomic.AtomicInteger;
 import android.util.Log;
 import android.widget.Toast;
 import android.content.Intent;
-import android.view.Menu;
-import android.view.MenuItem;
-
-import org.apache.commons.net.ftp.FTPClient;
 
 import com.dngames.mobilewebcam.PhotoSettings.Mode;
-
-import android.content.SharedPreferences;
 
 public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITextUpdater
 {
 	SurfaceHolder mHolder = null;
-	Camera mCamera = null;
+	volatile Camera mCamera = null;
 
 	private Handler mHandler = new Handler();
 
@@ -139,7 +101,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
            
 			}
 			
-			if(!mSettings.mLowBatteryPause || WorkImage.getBatteryLevel(mActivity) >= 15)
+			if(!mSettings.mLowBatteryPause || WorkImage.getBatteryLevel(mActivity) >= PhotoSettings.gLowBatteryPower)
 			{
 				if(!mPhotoLock.getAndSet(true))
 				{
@@ -203,7 +165,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 								        			}
 								        		}
 											}
-											mSettings.SetCameraParameters(params);
+											mSettings.SetCameraParameters(params, false);
 											try
 											{
 												mCamera.setParameters(params);
@@ -235,9 +197,15 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 													if(mCamera != null)
 													{
 														if(mSettings.mAutoFocus)
+														{
+															autofocusCallback.mPhotoEvent = "timer";
 															mCamera.autoFocus(autofocusCallback);
+														}
 														else
+														{
+															photoCallback.mPhotoEvent = "timer";
 															mCamera.takePicture(shutterCallback, null, photoCallback);
+														}
 													}
 												}
 											}).run();
@@ -246,9 +214,15 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 										{
 											// finally take the picture
 											if(mSettings.mAutoFocus)
+											{
+												autofocusCallback.mPhotoEvent = "timer";
 												mCamera.autoFocus(autofocusCallback);
+											}
 											else
+											{
+												photoCallback.mPhotoEvent = "timer";
 												mCamera.takePicture(shutterCallback, null, photoCallback);
+											}
 										}
 									}
 									catch(RuntimeException e)
@@ -507,14 +481,18 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 					@Override
 					public void run()
 					{
+						int count = 10;
 						// close cam when no longer required
-						while(mPhotoLock.get())
+						while(mPhotoLock.get() && count > 0)
 						{
+							MobileWebCam.LogI("Shutting down camera but waiting for lock!");
 							try {
 								Thread.sleep(500);
 							} catch (InterruptedException e) {
 							}
+							count--;
 						}
+						mPhotoLock.set(false);
 						
 						if(mCamera != null)
 						{
@@ -632,12 +610,25 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 				// the preview.
 				if(mCamera != null)
 				{
+					// wait for zoom (required at least on Galaxy Camera 2)
+					if(mSettings.mZoom > 0)
+					{
+		    			try
+		    			{
+							Thread.sleep(1000);
+						}
+		    			catch (InterruptedException e)
+						{
+							e.printStackTrace();
+						}
+					}
+
 					Camera.Parameters parameters = mCamera.getParameters();
 					if(parameters != null)
 					{
 						parameters.set("orientation", "landscape");						
 		        		mCamera.setParameters(parameters);
-		        		mSettings.SetCameraParameters(parameters);
+		        		mSettings.SetCameraParameters(parameters, false);
 						try
 						{
 							mCamera.setParameters(parameters);
@@ -740,7 +731,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 
 		tryOpenCam();
 		if(mCamera != null)
-			mSettings.SetCameraParameters(mCamera);
+			mSettings.SetCameraParameters(mCamera, false);
 		
 		online();
 	}
@@ -860,6 +851,8 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 								{
 									mHandler.removeCallbacks(mPostPicture);
 									mHandler.post(mPostPicture);
+									
+									MobileWebCam.LogI("Motion detected! Taking picture ...");
 	
 									mHandler.post(new Runnable() {
 										@Override
@@ -903,7 +896,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 									public void run()
 									{
 										if(mActivity.mMotionTextView != null)
-											mActivity.mMotionTextView.setText("Moved pixels: " + d + "  last movement: " + sincelastmotion);
+											mActivity.mMotionTextView.setText("Moved pixels: " + d + "  last movement: " + sincelastmotion + " ms");
 									}
 								});
 							}
@@ -944,8 +937,13 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	
 	private PreviewImageChecker mPreviewChecker = null;
 	
-	Camera.AutoFocusCallback autofocusCallback = new Camera.AutoFocusCallback() {
-		
+	public static abstract class EventAutoFocusCallback implements Camera.AutoFocusCallback
+	{
+		public String mPhotoEvent = null;
+	}
+	
+	EventAutoFocusCallback autofocusCallback = new EventAutoFocusCallback()
+	{
 		@Override
 		public void onAutoFocus(boolean success, Camera camera)
 		{
@@ -961,6 +959,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						Log.i("MobileWebCam", "mPostPicture.autofocus.run");
 						try
 						{
+							photoCallback.mPhotoEvent = mPhotoEvent;
 							mCamera.takePicture(shutterCallback, null, photoCallback);
 						}
 						catch(RuntimeException e)
@@ -987,7 +986,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		}
 	};
 	
-	Camera.PictureCallback photoCallback = new Camera.PictureCallback()
+	PhotoService.EventPictureCallback photoCallback = new PhotoService.EventPictureCallback()
 	{
 		public void onPictureTaken(byte[] data, Camera camera)
 		{
@@ -1004,12 +1003,12 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 			}
 			if(size != null)
 			{
-				work = new WorkImage(mActivity, Preview.this, data, size, date);
+				work = new WorkImage(mActivity, Preview.this, data, size, date, mPhotoEvent);
 				MobileWebCam.gPictureCounter++;
 				
 				UpdateText();
 				
-				mHandler.post(work);
+//				mHandler.post(work);
 			}
 			else
 			{
@@ -1066,12 +1065,21 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 
 			if(!mSettings.mShutterSound)
 			{
+				// restore sound volumes
 				AudioManager mgr = (AudioManager)mActivity.getSystemService(Context.AUDIO_SERVICE);
 				mgr.setStreamMute(AudioManager.STREAM_SYSTEM, false);
 			}
 			
-//			if(work != null)
-//				new Thread(work).start();
+			// start the work on the picture
+			if(work != null)
+				new Thread(work).start();
+			
+			// Background Mode: work will be done in different threads, activity can go now the picture is taken!
+			if(mSettings.mMode == Mode.BACKGROUND)
+			{
+				if(!MobileWebCam.gIsRunning)
+					mActivity.finish(); // theoretically the process could be killed now - hoping it continues until job finished!
+			}
 		}
 	};
 
@@ -1118,7 +1126,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
     		out.close();
     		
 			if(s.mStoreGPS)
-				ExifWrapper.addCoordinates("file:///data/data/com.dngames.mobilewebcam/files/current.jpg", WorkImage.gLatitude, WorkImage.gLongitude);
+				ExifWrapper.addCoordinates("file:///data/data/com.dngames.mobilewebcam/files/current.jpg", WorkImage.gLatitude, WorkImage.gLongitude, WorkImage.gAltitude);
     		
 			final Intent shareIntent = new Intent(android.content.Intent.ACTION_SEND);
 			shareIntent.setType("image/jpeg");
@@ -1158,7 +1166,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 		CustomReceiverService.start(mActivity);
 		
 		if(mCamera != null)
-			mSettings.SetCameraParameters(mCamera);
+			mSettings.SetCameraParameters(mCamera, false);
 	}
 	
 	// camera goes offline - if wanted upload offline picture now
@@ -1242,8 +1250,9 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 						size = parameters.getPictureSize();
 				}
 				
-				final WorkImage work = new WorkImage(mActivity, this, data, size, new Date());
-				mHandler.post(work);
+				final WorkImage work = new WorkImage(mActivity, this, data, size, new Date(), "offline");
+//				mHandler.post(work);
+				new Thread(work).start();
 	    	}
     	}
 	}
@@ -1262,10 +1271,11 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 					else
 						mActivity.mTextView.setTextColor(Color.WHITE);
 					int slowdown = Math.max(0, MobileWebCam.gUploadingCount * MobileWebCam.gUploadingCount - 1) * 1000;
+					String nightsettings = mSettings.IsNight() ? "    Night" : "";					
 					if(mSettings.mMode == Mode.MANUAL)
-						mActivity.mTextView.setText("Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Manual Mode active");
+						mActivity.mTextView.setText("Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Manual Mode active" + nightsettings);
 					else
-						mActivity.mTextView.setText("Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Refresh: " + (mSettings.mRefreshDuration + slowdown) / 1000 + " s");
+						mActivity.mTextView.setText("Pictures: " + MobileWebCam.gPictureCounter + "    Uploading: " + MobileWebCam.gUploadingCount + "   Refresh: " + (mSettings.mRefreshDuration + slowdown) / 1000 + " s" + nightsettings);
 		    	}
 				
 		    	if(mActivity.mCamNameViewFrame != null)
@@ -1277,11 +1287,17 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	}
 
 	@Override
-	public void Toast(String msg, int length)
+	public void Toast(final String msg, final int length)
 	{
 		if(!mSettings.mNoToasts)
 		{
-			Toast.makeText(mActivity, msg, length).show();
+			mActivity.runOnUiThread(new Runnable()
+				{
+					@Override public void run()
+					{
+						Toast.makeText(mActivity, msg, length).show();
+					}
+				});
 			
 /*			Toast myToast = new Toast(mActivity);
 			// Creating our custom text view, and setting text/rotation
@@ -1336,29 +1352,55 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 				}
 			}
 	
-			mActivity.mDrawOnTop.setVisibility(VISIBLE);
-			invalidate();
-			mActivity.mDrawOnTop.invalidate();
+			mActivity.runOnUiThread(new Runnable()
+			{
+			    public void run()
+			    {
+					mActivity.mDrawOnTop.setVisibility(VISIBLE);
+					invalidate();
+					mActivity.mDrawOnTop.invalidate();
+			    }
+			});
 
 			mPreviewBitmapLock.set(false);
 		}
 	}
 	
+	private static AtomicInteger JobRefCount = new AtomicInteger(0);
+	
 	@Override
-	public void JobFinished()
+	public synchronized int JobStarted()
 	{
-		if(ControlReceiver.PhotoCount.get() > 0)
-			return; // still pictures to do!
-		
-        mActivity.releaseLocks();
-		BackgroundPhoto.releaseWakeLocks();
+		Log.i("MobileWebCam", "JobStarted " + JobRefCount.get());
+		return JobRefCount.getAndIncrement();
+	}
+	
+	@Override
+	public synchronized int JobFinished()
+	{
+		Log.i("MobileWebCam", "JobFinished " + JobRefCount.get());
 
-		SharedPreferences prefs = mActivity.getSharedPreferences(MobileWebCam.SHARED_PREFS_NAME, 0);
-        PhotoSettings.Mode mode = PhotoSettings.getCamMode(prefs);
-		if(mode == Mode.BACKGROUND)
+		if(ControlReceiver.PhotoCount.get() <= 0)
 		{
-			if(!MobileWebCam.gIsRunning)
-				mActivity.finish();
+			// all pictures taken - camera is free
+			if(Preview.mPhotoLock.getAndSet(false))
+				Log.w("MobileWebCam", "PhotoLock released because a job is finished and all pics taken!");
 		}
+		
+		int cnt = JobRefCount.decrementAndGet();
+		if(cnt <= 0)
+		{
+			if(!MobileWebCam.gIsRunning && !MobileWebCam.gInSettings && mSettings.mMode == Mode.BACKGROUND)
+			{
+				MobileWebCam.LogI("Background done!");
+				
+		        mActivity.releaseLocks();
+				BackgroundPhoto.releaseWakeLocks();
+			
+				mActivity.finish();
+			}
+		}
+		
+		return cnt;
 	}
 }

@@ -21,7 +21,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -30,12 +29,10 @@ import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -46,11 +43,7 @@ import org.apache.http.entity.BufferedHttpEntity;
 import org.apache.http.impl.client.AbstractHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
@@ -60,9 +53,8 @@ import android.graphics.Paint;
 import android.hardware.Camera;
 import android.os.AsyncTask;
 import android.os.Environment;
-import android.preference.Preference;
+import android.os.Handler;
 import android.util.Log;
-import android.view.View;
 import android.widget.Toast;
 
 public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChangeListener
@@ -80,6 +72,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         String help() default "";
         String category() default "";
         String htmltype() default "text";
+        boolean night() default false;
     }
     private static String getDefaultString(Context c, StringPref sp)
     {
@@ -101,6 +94,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         String help() default "";
         String category() default "";
         String select() default "";
+        boolean night() default false;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -113,6 +107,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         float max() default Float.MAX_VALUE; // range max allowed value
         String help() default "";
         String category() default "";
+        boolean night() default false;
     }
     
     @Retention(RetentionPolicy.RUNTIME)
@@ -127,6 +122,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         String help() default "";
         String category() default "";
         String select() default "";
+        boolean night() default false;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -137,13 +133,13 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         boolean val();
         String help() default "";
         String category() default "";
+        boolean night() default false;
     }
 
 	@BooleanPref(key = "ftpserver_upload", val = false, help = "upload to ftp", category = "Upload")
 	public boolean mFTPPictures = false;
 	@BooleanPref(key = "cam_storepictures", val = false, help = "store on SDCard", category = "Upload")
 	public boolean mStorePictures = false;
-
 	@EditIntPref(key = "eventtrigger_pausetime", val = 60, factor = 1000, help = "Time between events", category = "Events")
 	public int mEventTriggerPauseTime = 0 * 1000;
 	
@@ -153,6 +149,8 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public String mLogin = "";
     @StringPref(key = "cam_password", val = "")
 	public String mPassword = "";
+    @BooleanPref(key = "cam_filename_datetime", val = false)
+    public boolean mTimeStampedFilePostName;
     @StringPref(key = "ftpserver_defaultname", val = "current.jpg")
 	public String mDefaultname = "current.jpg";
     @EditIntPref(key = "ftp_batchupload", val = 1, min = 1, help = "FTP Batch Upload", category = "Upload")
@@ -181,6 +179,8 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public boolean mFTPKeepConnected = false;
     @StringPref(key = "sdcard_dir", val = "/MobileWebCam/")
     public String mSDCardDir = "/MobileWebCam/";
+    @BooleanPref(key = "secondary_sd", val = false)
+    public boolean mSecondarySD = false;
     @EditIntPref(key = "sdcard_keepoldpics", val = 0)
     public int mSDCardKeepPics = 0;
     
@@ -220,14 +220,13 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public int mPhotoIntentRepeat = 1;
 	@BooleanPref(key = "night_detect", val = false, help = "no dark/night picture upload.", category = "Night")
 	public boolean mNightDetect = false;
-	@BooleanPref(key = "night_autoflash", val = false, help = "auto flashlight for dark pictures", category = "Night")
-	public boolean mNightAutoFlash = false;
-	public boolean mNightAutoFlashEnabled = false;
+	@BooleanPref(key = "night_auto_config", val = false, help = "automatic night detection", category = "Night")
+	public boolean mNightAutoConfig = false;
+	public boolean mNightAutoConfigEnabled = false;
 	@BooleanPref(key = "night_ir_light", val = false, help = "recolor ir light pictures", category = "Night")
 	public boolean mNightIRLight = false;
-	@BooleanPref(key = "night_autobright", val = false, help = "auto brightness for dark pictures", category = "Night")
+	@BooleanPref(key = "night_autobright", val = false, help = "auto brightness for night pictures", category = "Night")
 	public boolean mNightAutoBrightness = false;
-	public boolean mNightAutoBrightnessEnabled = false;
 
 	@EditFloatPref(key = "night_autocontrastfactor", val = 3f, help = "Contrast", category = "Night")
 	public float mNightAutoContrastFactor = 3;
@@ -247,16 +246,18 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	public String mNightEndTime = "00:00";
 	
 	public boolean mAutoStart = false;
+	
 	@EditIntPref(key = "reboot", val = 0)
 	public int mReboot = 0; 
-	@EditIntPref(key = "cam_openeddelay", val = 200, help = "Cam Delay ms", category = "Activity") // ms to delay capture when camera is started (use to avoid overexposure in background mode)
-	public int mDelayAfterCameraOpened = 200;
+	@EditIntPref(key = "cam_openeddelay", val = 500, help = "Cam Delay ms", category = "Activity") // ms to delay capture when camera is started (use to avoid overexposure in background mode)
+	public int mDelayAfterCameraOpened = 500;
 	@StringPref(key = "activity_starttime", val = "00:00", help = "Time Start", htmltype = "time", category = "Activity")
 	public String mStartTime = "00:00";
 	@StringPref(key = "activity_endtime", val = "00:00", help = "Time End", htmltype = "time", category = "Activity")
 	public String mEndTime = "00:00";
 	@BooleanPref(key = "lowbattery_pause", val = false, help = "low battery pause", category = "Activity")
 	public boolean mLowBatteryPause = false;
+	public static final int gLowBatteryPower = 5;
 	@StringPref(key = "imprint_datetimeformat", val = "yyyy/MM/dd   HH:mm:ss")
 	public String mImprintDateTime = "yyyy/MM/dd   HH:mm:ss";
 	@StringPref(key = "imprint_text", val = "mobilewebcam", help = "Title", category = "Picture")
@@ -319,17 +320,18 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	boolean mShutterSound = true;
     @BooleanPref(key = "cam_front", val = false)
 	public boolean mFrontCamera = false;
-    @EditIntPref(key = "zoom", val = 0, help = "Zoom 0-100", category = "Picture")        
+    public boolean mSetNightConfiguration = false;    
+    @EditIntPref(key = "zoom", val = 0, help = "Zoom 0-100", category = "Picture", night = true)        
 	public int mZoom = 0;
-    @EditIntPref(key = "exposurecompensation", val = 50, help = "Exposure Compensation", category = "Picture")
+    @EditIntPref(key = "exposurecompensation", val = 50, help = "Exposure Compensation", category = "Picture", night = true)
 	public int mExposureCompensation = 50;
-    @StringPref(key = "whitebalance", val = Camera.Parameters.WHITE_BALANCE_AUTO, help = "White Balance", category = "Picture")
+    @StringPref(key = "whitebalance", val = Camera.Parameters.WHITE_BALANCE_AUTO, help = "White Balance", category = "Picture", night = true)
 	public String mWhiteBalance = Camera.Parameters.WHITE_BALANCE_AUTO;
-    @StringPref(key = "scenemode", val = Camera.Parameters.SCENE_MODE_AUTO, help = "Scene Mode", category = "Picture")
+    @StringPref(key = "scenemode", val = Camera.Parameters.SCENE_MODE_AUTO, help = "Scene Mode", category = "Picture", night = true)
 	public String mSceneMode = Camera.Parameters.SCENE_MODE_AUTO;
-    @StringPref(key = "coloreffect", val = Camera.Parameters.EFFECT_NONE, help = "Effect", category = "Picture")
+    @StringPref(key = "coloreffect", val = Camera.Parameters.EFFECT_NONE, help = "Effect", category = "Picture", night = true)
 	public String mColorEffect = Camera.Parameters.EFFECT_NONE;
-    @BooleanPref(key = "cam_flash", val = false, help = "flashlight enabled", category = "Activity")
+    @BooleanPref(key = "cam_flash", val = false, help = "flashlight enabled", category = "Activity", night = true)
 	public boolean mCameraFlash = false;
 	
 	@EditIntPref(key = "ftp_every", val = 1, min = 1)
@@ -340,7 +342,8 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 	@BooleanPref(key = "log_upload", val = false, help = "send log", category = "Activity")
 	public boolean mLogUpload = false;
 	    
-	public Bitmap mImprintBitmap = null;
+	public static Object gImprintBitmapLock = new Object();
+	public static Bitmap gImprintBitmap = null;
 	
 	private static int getEditInt(SharedPreferences prefs, String name, int d) throws NumberFormatException
 	{
@@ -431,6 +434,13 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		return m;
 	}
 	
+	private static String NIGHTPOSTFIX = "_night"; 
+	
+	public String getNightPreferencesPostfix()
+	{
+		return IsNight() ? NIGHTPOSTFIX : "";
+	}
+	
     public PhotoSettings(Context c)
 	{
     	mContext = c;
@@ -491,7 +501,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
     			MobileWebCam.LogI(msg);
     		}
     	}
-		
+    	
 		// get all preferences
 		for(Field f : getClass().getFields())
 		{
@@ -594,7 +604,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
                 
 		mAutoStart = prefs.getBoolean("autostart", false);
 		mCameraStartupEnabled = prefs.getBoolean("cam_autostart", true);
-        mShutterSound = prefs.getBoolean("shutter", true); 
+        mShutterSound = prefs.getBoolean("shutter", true);
 		mDateTimeColor = GetPrefColor(prefs, "datetime_color", "#FFFFFFFF", Color.WHITE);
 		mDateTimeShadowColor = GetPrefColor(prefs, "datetime_shadowcolor", "#FF000000", Color.BLACK);
 		mDateTimeBackgroundColor = GetPrefColor(prefs, "datetime_backcolor", "#80FF0000", Color.argb(0x80, 0xFF, 0x00, 0x00));
@@ -636,8 +646,11 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		mImprintPictureX = prefs.getInt("imprint_picture_x", 0);
 		mImprintPictureY = prefs.getInt("imprint_picture_y", 0);
 		
-		mNightAutoFlashEnabled = prefs.getBoolean("autoflash_enabled", false);
-		mNightAutoBrightnessEnabled = prefs.getBoolean("autobrightness_enabled", false);
+		mNightAutoConfigEnabled = prefs.getBoolean("night_auto_enabled", false);
+
+    	mSetNightConfiguration = prefs.getBoolean("cam_nightconfiguration", false);
+    	// override night camera parameters (read again with postfix)
+    	getCurrentNightSettings();
 		
 		mFilterPicture = false; //***prefs.getBoolean("filter_picture", false);
         mFilterType = getEditInt(mContext, prefs, "filter_sel", 0);
@@ -650,44 +663,51 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 				File path = new File(Environment.getExternalStorageDirectory() + "/MobileWebCam/");
 		    	if(path.exists())
 		    	{
-					if(mImprintBitmap != null)
-						mImprintBitmap.recycle();
-					mImprintBitmap = null;
-		
-					File file = new File(path, "imprint.png");
-					try
-					{
-						FileInputStream in = new FileInputStream(file);
-						mImprintBitmap = BitmapFactory.decodeStream(in);
-						in.close();
-					}
-					catch(IOException e)
-					{
-						Toast.makeText(mContext, "Error: unable to read imprint bitmap " + file.getName() + "!", Toast.LENGTH_SHORT).show();
-						mImprintBitmap = null;
-					}
-					catch(OutOfMemoryError e)
-					{
-						Toast.makeText(mContext, "Error: imprint bitmap " + file.getName() + " too large!", Toast.LENGTH_LONG).show();
-						mImprintBitmap = null;				
-					}
+		    		synchronized(gImprintBitmapLock)
+		    		{
+						if(gImprintBitmap != null)
+							gImprintBitmap.recycle();
+						gImprintBitmap = null;
+			
+						File file = new File(path, "imprint.png");
+						try
+						{
+							FileInputStream in = new FileInputStream(file);
+							gImprintBitmap = BitmapFactory.decodeStream(in);
+							in.close();
+						}
+						catch(IOException e)
+						{
+							Toast.makeText(mContext, "Error: unable to read imprint bitmap " + file.getName() + "!", Toast.LENGTH_SHORT).show();
+							gImprintBitmap = null;
+						}
+						catch(OutOfMemoryError e)
+						{
+							Toast.makeText(mContext, "Error: imprint bitmap " + file.getName() + " too large!", Toast.LENGTH_LONG).show();
+							gImprintBitmap = null;				
+						}
+		    		}
 		    	}
 	    	}
 			else
 			{
 				DownloadImprintBitmap();
 			}
-			if(mImprintBitmap == null)
+			
+			synchronized(gImprintBitmapLock)
 			{
-				// last resort: resource default
-				try
+				if(gImprintBitmap == null)
 				{
-					mImprintBitmap = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.imprint);
-				}
-				catch(OutOfMemoryError e)
-				{
-					Toast.makeText(mContext, "Error: default imprint bitmap too large!", Toast.LENGTH_LONG).show();
-					mImprintBitmap = null;
+					// last resort: resource default
+					try
+					{
+						gImprintBitmap = BitmapFactory.decodeResource(mContext.getResources(), R.drawable.imprint);
+					}
+					catch(OutOfMemoryError e)
+					{
+						Toast.makeText(mContext, "Error: default imprint bitmap too large!", Toast.LENGTH_LONG).show();
+						gImprintBitmap = null;
+					}
 				}
 			}
 		}
@@ -713,83 +733,108 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		}
     }
 	
+	// depending on night state override some settings
+	public void getCurrentNightSettings()
+	{
+		String nightsettings = getNightPreferencesPostfix();
+		mZoom = getEditInt(mContext, mPrefs, "zoom" + nightsettings, mZoom);
+    	mExposureCompensation = getEditInt(mContext, mPrefs, "exposurecompensation" + nightsettings, mExposureCompensation);
+    	mWhiteBalance = mPrefs.getString("whitebalance" + nightsettings, mWhiteBalance);
+    	mSceneMode = mPrefs.getString("scenemode" + nightsettings, mSceneMode);
+    	mColorEffect = mPrefs.getString("coloreffect" + nightsettings, mColorEffect);
+    	mCameraFlash = mPrefs.getBoolean("cam_flash", mCameraFlash);
+	}
+	
 	public void DownloadImprintBitmap()
 	{
 		// get from URL
-		try
-		{
-			new AsyncTask<String, Void, Bitmap>()
-			{
-				@Override
-				protected Bitmap doInBackground(String... params)
-				{
-					try
+		Handler h = new Handler(mContext.getMainLooper());
+	    h.post(new Runnable()
+	    {
+	        @Override
+	        public void run()
+	        {
+	    		try
+	    		{
+					new AsyncTask<String, Void, Bitmap>()
 					{
-						URL url = new URL(mImprintPictureURL);
-						HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-
-						InputStream is = connection.getInputStream();
-						return BitmapFactory.decodeStream(is);
-					}
-					catch (MalformedURLException e)
-					{
-						if(e.getMessage() != null)
-							MobileWebCam.LogE("Imprint picture URL error: " + e.getMessage());
-						else
-							MobileWebCam.LogE("Imprint picture URL invalid!");								
-						e.printStackTrace();
-					}
-					catch (IOException e)
-					{
-						if(e.getMessage() != null)
-							MobileWebCam.LogE(e.getMessage());
-						e.printStackTrace();
-					}
-					
-					return null;
-				}
-				
-				@Override
-				protected void onPostExecute(Bitmap result)
-				{
-					if(result == null && !mNoToasts)
-						Toast.makeText(mContext, "Imprint picture download failed!", Toast.LENGTH_SHORT).show();
-					
-					mImprintBitmap = result;
-				}
-			}.execute().get();
-		}
-		catch (Exception e)
-		{
-			if(e.getMessage() != null)
-				MobileWebCam.LogE(e.getMessage());
-			e.printStackTrace();
-		}				
+						@Override
+						protected Bitmap doInBackground(String... params)
+						{
+							try
+							{
+								URL url = new URL(mImprintPictureURL);
+								HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+		
+								InputStream is = connection.getInputStream();
+								return BitmapFactory.decodeStream(is);
+							}
+							catch (MalformedURLException e)
+							{
+								if(e.getMessage() != null)
+									MobileWebCam.LogE("Imprint picture URL error: " + e.getMessage());
+								else
+									MobileWebCam.LogE("Imprint picture URL invalid!");								
+								e.printStackTrace();
+							}
+							catch (IOException e)
+							{
+								if(e.getMessage() != null)
+									MobileWebCam.LogE(e.getMessage());
+								e.printStackTrace();
+							}
+							
+							return null;
+						}
+						
+						@Override
+						protected void onPostExecute(Bitmap result)
+						{
+							if(result == null && !mNoToasts)
+								Toast.makeText(mContext, "Imprint picture download failed!", Toast.LENGTH_SHORT).show();
+							
+							synchronized(PhotoSettings.gImprintBitmapLock)
+							{
+								PhotoSettings.gImprintBitmap = result;
+							}
+						}
+					}.execute().get();
+	    		}
+	    		catch (Exception e)
+	    		{
+	    			if(e.getMessage() != null)
+	    				MobileWebCam.LogE(e.getMessage());
+	    			e.printStackTrace();
+	    		}				
+	        }
+	    });			
 	}
 	
-	public void SetCameraParameters(Camera.Parameters params)
+	public boolean IsNight()
 	{
-		// reset night settings?
-		if(!mNightAutoFlash && mNightAutoFlashEnabled)
-			setCameraFlash(false, true);
-		if(!mNightAutoBrightness && mNightAutoBrightnessEnabled)
-			setCameraAutoNightBrightness(false);
-		
-		// check forced night time settings
-		if(!mNightStartTime.equals(mNightEndTime))
+		boolean night = Preview.CheckInTime(new Date(), mNightStartTime, mNightEndTime, true);
+		return night || mSetNightConfiguration || (mNightAutoConfig && mNightAutoConfigEnabled);
+	}
+	
+	private boolean mLastNightSettings = false;
+	
+	public void SetCameraParameters(Camera.Parameters params, boolean configure)
+	{
+		if(!configure) // no auto detection or reset of stuff when just manually setting from options menu
 		{
-			boolean nighttime = Preview.CheckInTime(new Date(), mNightStartTime, mNightEndTime, true);
-			if(mNightAutoFlash || mNightAutoBrightness)
+			// auto night detection switched off now?
+			if(!mNightAutoConfig && mNightAutoConfigEnabled)
 			{
-				if(mNightAutoFlash && mCameraFlash != nighttime)
-					setCameraFlash(nighttime, true); // take next picture with changed flash!
-				else if(mNightAutoBrightness && mNightAutoBrightnessEnabled != nighttime)
-					setCameraAutoNightBrightness(nighttime); // take next picture with changed settings if image dark!
+				mNightAutoConfigEnabled = false;
+				getCurrentNightSettings();
+			}			
+
+			if(IsNight() != mLastNightSettings)
+			{
+				// possibly override camera settings for night mode!
+		        setCameraNightSettings(params, configure);
 			}
 		}
-		
-        // possibly override camera settings for night mode!
-		setCameraNightSettings(params);
 
 		if(NewCameraFunctions.isZoomSupported(params))
 			NewCameraFunctions.setZoom(params, mZoom);
@@ -805,15 +850,17 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		int maxexp = NewCameraFunctions.getMaxExposureCompensation(params);
 		if(minexp != 0 || maxexp != 0)
 			NewCameraFunctions.setExposureCompensation(params, (maxexp - minexp) * mExposureCompensation / 100 + minexp);
-	}	
+		
+		mLastNightSettings = IsNight();
+	}
 
 	// set all the configured camera parameters
-	public void SetCameraParameters(Camera cam)
+	public void SetCameraParameters(Camera cam, boolean configure)
 	{
 		Camera.Parameters params = cam.getParameters();
 		if(params != null)
 		{
-			SetCameraParameters(params);
+			SetCameraParameters(params, configure);
 			try
 			{
 				cam.setParameters(params);
@@ -846,32 +893,75 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 				BooleanPref bp = f.getAnnotation(BooleanPref.class);
 				if(bp != null)
 				{
-					boolean val = prefs.getBoolean(bp.key(), bp.val());
-					all.put(bp.key(), new Object[] { val, bp.help() });
+					String key = bp.key();
+					boolean val = prefs.getBoolean(key, bp.val());
+					all.put(key, new Object[] { val, bp.help() });
+					if(bp.night())
+					{
+						key = key + PhotoSettings.NIGHTPOSTFIX;
+						val = prefs.getBoolean(key, bp.val());
+						all.put(key, new Object[] { val, bp.help() });
+					}
 				}
 			}
 			{
 				StringPref sp = f.getAnnotation(StringPref.class);
 				if(sp != null)
 				{
-					String val = prefs.getString(sp.key(), getDefaultString(context, sp));
-					all.put(sp.key(), new Object[] { val, sp.help() });
+					String key = sp.key();
+					String val = prefs.getString(key, getDefaultString(context, sp));
+					all.put(key, new Object[] { val, sp.help() });
+					if(sp.night())
+					{
+						key = key + PhotoSettings.NIGHTPOSTFIX;
+						val = prefs.getString(key, getDefaultString(context, sp));
+						all.put(key, new Object[] { val, sp.help() });
+					}
 				}
 			}
 			{
 				EditIntPref ip = f.getAnnotation(EditIntPref.class);
 				if(ip != null)
 				{
-					String val = prefs.getString(ip.key(), "" + ip.val());
+					String key = ip.key();
+					String val = prefs.getString(key, "" + ip.val());
 					all.put(ip.key(), new Object[] { val, ip.help() });
+					if(ip.night())
+					{
+						key = key + PhotoSettings.NIGHTPOSTFIX;
+						val = prefs.getString(key, "" + ip.val());
+						all.put(key, new Object[] { val, ip.help() });
+					}
 				}
 			}
 			{
 				IntPref ip = f.getAnnotation(IntPref.class);
 				if(ip != null)
 				{
-					int val = prefs.getInt(ip.key(), ip.val());
+					String key = ip.key();
+					int val = prefs.getInt(key, ip.val());
 					all.put(ip.key(), new Object[] { val, ip.help() });
+					if(ip.night())
+					{
+						key = key + PhotoSettings.NIGHTPOSTFIX;
+						val = prefs.getInt(key, ip.val());
+						all.put(key, new Object[] { val, ip.help() });
+					}
+				}
+			}
+			{
+				EditFloatPref fp = f.getAnnotation(EditFloatPref.class);
+				if(fp != null)
+				{
+					String key = fp.key();
+					String val = prefs.getString(key, "" + fp.val());
+					all.put(fp.key(), new Object[] { val, fp.help() });
+					if(fp.night())
+					{
+						key = key + PhotoSettings.NIGHTPOSTFIX;
+						val = prefs.getString(key, "" + fp.val());
+						all.put(key, new Object[] { val, fp.help() });
+					}
 				}
 			}
 		}
@@ -907,81 +997,89 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 		{
 			gLastGETSettingsPictureCnt = MobileWebCam.gPictureCounter;
 
-			new AsyncTask<String, Void, String>()
-			{
-				@Override
-				protected String doInBackground(String... params)
-				{
-					try
+			Handler h = new Handler(context.getMainLooper());
+		    h.post(new Runnable()
+		    {
+		        @Override
+		        public void run()
+		        {
+					new AsyncTask<String, Void, String>()
 					{
-						DefaultHttpClient httpclient = new DefaultHttpClient();
-						if(login.length() > 0)
+						@Override
+						protected String doInBackground(String... params)
 						{
 							try
 							{
-		    					((AbstractHttpClient) httpclient).getCredentialsProvider().setCredentials(
-			    						new AuthScope(null, -1),
-			    						new UsernamePasswordCredentials(login, password));
+								DefaultHttpClient httpclient = new DefaultHttpClient();
+								if(login.length() > 0)
+								{
+									try
+									{
+				    					((AbstractHttpClient) httpclient).getCredentialsProvider().setCredentials(
+					    						new AuthScope(null, -1),
+					    						new UsernamePasswordCredentials(login, password));
+									}
+									catch(Exception e)
+									{
+										e.printStackTrace();
+										if(e.getMessage() != null)
+											MobileWebCam.LogE("http login " + e.getMessage());
+										else
+											MobileWebCam.LogE("http: unable to log in");
+										
+										return null;
+									}
+								}
+								HttpGet get = new HttpGet(settingsurl);
+								HttpResponse response = httpclient.execute(get);
+								HttpEntity ht = response.getEntity();
+						        BufferedHttpEntity buf = new BufferedHttpEntity(ht);
+						        InputStream is = buf.getContent();
+						        BufferedReader r = new BufferedReader(new InputStreamReader(is));
+						        StringBuilder total = new StringBuilder();
+						        String line;
+						        while((line = r.readLine()) != null)
+						            total.append(line + "\n");
+								
+								if(ht.getContentType().getValue().startsWith("text/plain"))
+									return total.toString();
+								else
+									return "GET Config Error!\n" + total.toString(); 							
 							}
 							catch(Exception e)
 							{
 								e.printStackTrace();
 								if(e.getMessage() != null)
-									MobileWebCam.LogE("http login " + e.getMessage());
-								else
-									MobileWebCam.LogE("http: unable to log in");
-								
-								return null;
+								{
+									MobileWebCam.LogE(e.getMessage());
+									return "GET Config Error!\n" + e.getMessage(); 
+								}						
 							}
-						}
-						HttpGet get = new HttpGet(settingsurl);
-						HttpResponse response = httpclient.execute(get);
-						HttpEntity ht = response.getEntity();
-				        BufferedHttpEntity buf = new BufferedHttpEntity(ht);
-				        InputStream is = buf.getContent();
-				        BufferedReader r = new BufferedReader(new InputStreamReader(is));
-				        StringBuilder total = new StringBuilder();
-				        String line;
-				        while((line = r.readLine()) != null)
-				            total.append(line + "\n");
-						
-						if(ht.getContentType().getValue().startsWith("text/plain"))
-							return total.toString();
-						else
-							return "GET Config Error!\n" + total.toString(); 							
-					}
-					catch(Exception e)
-					{
-						e.printStackTrace();
-						if(e.getMessage() != null)
-						{
-							MobileWebCam.LogE(e.getMessage());
-							return "GET Config Error!\n" + e.getMessage(); 
-						}						
-					}
 
-					return null;
-				}
-				
-				@Override
-				protected void onPostExecute(String result)
-				{
-					if(result != null)
-					{
-						if(result.startsWith("GET Config Error!\n"))
-						{
-							if(!noToasts)
-								Toast.makeText(context, result, Toast.LENGTH_SHORT).show();
+							return null;
 						}
-						else
+						
+						@Override
+						protected void onPostExecute(String result)
 						{
-							PhotoSettings.GETSettings(context, result, prefs);
-						}
-					}
-					else if(!noToasts)
-						Toast.makeText(context, "GET config failed!", Toast.LENGTH_SHORT).show();
-				}					
-			}.execute();
+							if(result != null)
+							{
+								if(result.startsWith("GET Config Error!\n"))
+								{
+									if(!noToasts)
+										Toast.makeText(context, result, Toast.LENGTH_SHORT).show();
+								}
+								else
+								{
+									PhotoSettings.GETSettings(context, result, prefs);
+								}
+							}
+							else if(!noToasts)
+								Toast.makeText(context, "GET config failed!", Toast.LENGTH_SHORT).show();
+						}					
+					}.execute();
+		        }
+		    });			
 		}
 	}
 	
@@ -997,112 +1095,93 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
 			{
 				BooleanPref bp = f.getAnnotation(BooleanPref.class);
 				if(bp != null)
+				{
 					all.put(bp.key(), bp.val());
+					if(bp.night())
+						all.put(bp.key() + PhotoSettings.NIGHTPOSTFIX, bp.val());
+				}
 			}
 			{
 				StringPref sp = f.getAnnotation(StringPref.class);
 				if(sp != null)
+				{
 					all.put(sp.key(), getDefaultString(context, sp));
+					if(sp.night())
+						all.put(sp.key() + PhotoSettings.NIGHTPOSTFIX, getDefaultString(context, sp));
+				}
 			}
 			{
 				EditIntPref ip = f.getAnnotation(EditIntPref.class);
 				if(ip != null)
+				{
 					all.put(ip.key(), ip.val() + "");
+					if(ip.night())
+						all.put(ip.key() + PhotoSettings.NIGHTPOSTFIX, ip.val() + "");
+				}
 			}
 			{
 				IntPref ip = f.getAnnotation(IntPref.class);
 				if(ip != null)
-					all.put(ip.key(), ip.val());
-			}
-			{
-				EditFloatPref ip = f.getAnnotation(EditFloatPref.class);
-				if(ip != null)
-					all.put(ip.key(), ip.val() + "");
-			}
-		}
-		
-		for(Map.Entry<String, ?> p : all.entrySet())
-		{
-			for(String s : settings)
-			{
-				if(s.startsWith(p.getKey()))
 				{
-					try
-					{
-						String value = s.split(":", 2)[1];
-						if(value.length() > 0)
-						{
-							Class c = p.getValue().getClass();
-							Object val = parseObjectFromString(value, c);
-	
-							if(c == String.class)
-								edit.putString(p.getKey(), (String)val);
-							else if(c == Boolean.class)
-								edit.putBoolean(p.getKey(), (Boolean)val);
-							else if(c == Integer.class)
-								edit.putInt(p.getKey(), (Integer)val);
-							else
-								throw new UnsupportedOperationException(c.toString());
-						}
-						else
-						{
-							MobileWebCam.LogE("Warning: config.txt entry '" + p.getKey() + "' value is empty!");
-						}
-					}
-					catch(Exception e)
-					{
-						if(e.getMessage() != null)
-							MobileWebCam.LogE(e.getMessage());
-						e.printStackTrace();
-					}
-					break;
+					all.put(ip.key(), ip.val());
+					if(ip.night())
+						all.put(ip.key() + PhotoSettings.NIGHTPOSTFIX, ip.val());
+				}
+			}
+			{
+				EditFloatPref fp = f.getAnnotation(EditFloatPref.class);
+				if(fp != null)
+				{
+					all.put(fp.key(), fp.val() + "");
+					if(fp.night())
+						all.put(fp.key() + PhotoSettings.NIGHTPOSTFIX, fp.val() + "");
 				}
 			}
 		}
-		edit.commit();
-	}
-
-	public void setCameraFlash(boolean on, boolean auto)
-	{
-		SharedPreferences.Editor edit = mPrefs.edit();
-		if(auto)
+		
+		for(String s : settings)
 		{
-			boolean ison = mPrefs.getBoolean("autoflash_enabled", false);
-			
-			if(on != ison)
+			try
 			{
-				edit.putBoolean("autoflash_enabled", on);
-				mNightAutoFlashEnabled = on;
-	
-				MobileWebCam.LogI("night flash auto setting " + (on ? "enabled" : "disabled"));
+				String[] setting = s.split(":", 2);
+				String param = setting[0];
+				if(all.containsKey(param))
+				{
+					String value = setting[1];
+					if(value.length() > 0)
+					{
+						Class<? extends Object> c = all.get(param).getClass();
+						Object val = parseObjectFromString(value, c);
+
+						if(c == String.class)
+							edit.putString(param, (String)val);
+						else if(c == Boolean.class)
+							edit.putBoolean(param, (Boolean)val);
+						else if(c == Integer.class)
+							edit.putInt(param, (Integer)val);
+						else
+							throw new UnsupportedOperationException(c.toString());
+					}
+					else
+					{
+						MobileWebCam.LogE("Warning: config.txt entry '" + param + "' value is empty!");
+					}
+				}
+			}
+			catch(Exception e)
+			{
+				if(e.getMessage() != null)
+					MobileWebCam.LogE(e.getMessage());
+				e.printStackTrace();
 			}
 		}
-		edit.putBoolean("cam_flash", on);
 		edit.commit();
-		
-		mCameraFlash = on;
 	}
 	
-	public void setCameraAutoNightBrightness(boolean on)
+	public void setCameraNightSettings(Camera.Parameters params, boolean configure)
 	{
-		boolean ison = mPrefs.getBoolean("autobrightness_enabled", false);
-	
-		if(on != ison)
-		{
-			SharedPreferences.Editor edit = mPrefs.edit();
-	    	edit.putBoolean("autobrightness_enabled", on);
-			edit.commit();
-			
-			mNightAutoBrightnessEnabled = on;
-			
-			MobileWebCam.LogI("night brightness auto setting " + (on ? "enabled" : "disabled"));			
-		}
-	}	
-	
-	public void setCameraNightSettings(Camera.Parameters params)
-	{
-		boolean ison = mNightAutoBrightnessEnabled;
-		if(ison)
+		boolean isnightvision = mNightAutoBrightness && IsNight();
+		if(isnightvision)
 		{
 			// set night settings
         	mExposureCompensation = mNightAutoBrightnessExposure;
@@ -1116,7 +1195,7 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         		}
         	}
         	if(!mWhiteBalance.equals(mNightAutoBrightnessWhitebalance))
-        		MobileWebCam.LogE("Auto night brightness white balance mode " + mNightAutoBrightnessWhitebalance + " not found!");
+        		Log.e("MobileWebCam", "Auto night brightness white balance mode " + mNightAutoBrightnessWhitebalance + " not found!");
         	modes = NewCameraFunctions.getSupportedSceneModes(params);
         	if(modes != null)
         	{
@@ -1127,14 +1206,11 @@ public class PhotoSettings implements SharedPreferences.OnSharedPreferenceChange
         		}
         	}
         	if(!mSceneMode.equals(mNightAutoBrightnessScenemode))
-        		MobileWebCam.LogE("Auto night brightness scene mode " + mNightAutoBrightnessScenemode + " not found!");
+        		Log.e("MobileWebCam", "Auto night brightness scene mode " + mNightAutoBrightnessScenemode + " not found!");
 		}
-		else if(!ison)
+		else
 		{
-			// restore old settings
-        	mExposureCompensation = getEditInt(mContext, mPrefs, "exposurecompensation", 50);
-        	mWhiteBalance = mPrefs.getString("whitebalance", Camera.Parameters.WHITE_BALANCE_AUTO);
-        	mSceneMode = mPrefs.getString("scenemode", Camera.Parameters.SCENE_MODE_AUTO);
+			getCurrentNightSettings();
 		}
 	}	
 }
