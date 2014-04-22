@@ -58,7 +58,6 @@ public class MobileWebCam extends CamActivity
     
     public static final boolean DEBUG_MOTIONDETECT = false;
  
-    private static final int MENU_SHARE_URL = 0;
     private static final int MENU_SHARE_IMAGE = 1;
     private static final int MENU_SET_ON_OFFLINE = 2;
     private static final int MENU_SET_FRONT_BACK = 3;
@@ -225,13 +224,6 @@ public class MobileWebCam extends CamActivity
 		else
 			addMenuItem(menu, MENU_SET_ON_OFFLINE, "Enable Camera", android.R.drawable.presence_offline, MenuItem.SHOW_AS_ACTION_ALWAYS);
 
-    	if(!mSettings.mURL.equals(mSettings.mDefaulturl) && mSettings.mUploadPictures)
-		{
-			if(mSettings.mEmailReceiverAddress.length() > 0 && mSettings.mMailPictures)
-				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_send, MenuItem.SHOW_AS_ACTION_ALWAYS);
-			else
-				addMenuItem(menu, MENU_SHARE_URL, "Share URL", android.R.drawable.ic_menu_share, MenuItem.SHOW_AS_ACTION_ALWAYS);
-		}
 		if(mSettings.mMode == Mode.MANUAL || mSettings.mMode == Mode.NORMAL)
 			addMenuItem(menu, MENU_SHARE_IMAGE, "Share Image", android.R.drawable.ic_menu_gallery, MenuItem.SHOW_AS_ACTION_ALWAYS);
     	
@@ -282,19 +274,6 @@ public class MobileWebCam extends CamActivity
     	
         switch (item.getItemId())
         {
-	        case MENU_SHARE_URL:
-	        	{
-					final Intent shareIntent = new Intent(android.content.Intent.ACTION_SEND);
-					shareIntent.setType("plain/text");
-					if(mSettings.mEmailReceiverAddress.length() > 0)
-						shareIntent.putExtra(android.content.Intent.EXTRA_EMAIL, new String[] { mSettings.mEmailReceiverAddress });
-					if(mSettings.mEmailSubject.length() > 0)
-						shareIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, mSettings.mEmailSubject);
-					shareIntent.putExtra(android.content.Intent.EXTRA_TEXT, mSettings.mURL.substring(0, mSettings.mURL.lastIndexOf("/") + 1));
-					MobileWebCam.this.startActivity(Intent.createChooser(shareIntent, "Share URL ..."));
- 
-					return true;
-	        	}
 	        case MENU_SHARE_IMAGE:
 	        	if(mPreview != null)
 	        		mPreview.shareNextPicture();

@@ -45,19 +45,6 @@ public class FTPSettings extends PreferenceActivity implements OnSharedPreferenc
  		// need to listen for ftp settings changes and reconnect later
     	if(key == "ftp_keep_open")
     	{
-	 		if(UploadFTPPhoto.FTPConnection.session != null)
-	 		{
-	 			try
-	 			{
-		 			if(UploadFTPPhoto.FTPConnection.channelSftp != null)
-		 				UploadFTPPhoto.FTPConnection.channelSftp.disconnect();
-	 			}
-	 			catch (Exception e)
-	 			{
-	 				e.printStackTrace();
-	 			}
-	 			UploadFTPPhoto.FTPConnection.session = null;
-	 		}
 	 		if(UploadFTPPhoto.FTPConnection.client != null)
 	 		{
 	 			try

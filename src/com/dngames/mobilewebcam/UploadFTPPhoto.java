@@ -31,21 +31,11 @@ import org.apache.commons.net.ftp.FTPClient;
 
 import android.content.Context;
 
-import com.jcraft.jsch.Channel;
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.Session;
-import com.jcraft.jsch.SftpException;
-
 public class UploadFTPPhoto extends Upload
 {
 	public static class FTPConnection
 	{
 		public static FTPClient client		= null;
-		public static Session 	session 	= null;
-		public static Channel 	channel 	= null;
-		public static ChannelSftp channelSftp = null;
 	};
 			
 	protected UploadFTPPhoto(Context c, ITextUpdater tu, PhotoSettings s, byte[] jpeg, Date date, String event)
@@ -133,52 +123,33 @@ ftpupload:	{
 				
 				if(upload_now)
 				{
-					if(mSettings.mSFTP && FTPConnection.session == null)
-					{
-						JSch jsch = new JSch(); 
-						FTPConnection.session = jsch.getSession(mSettings.mFTPLogin, mSettings.mFTP, mSettings.mFTPPort);
-						FTPConnection.session.setPassword(mSettings.mFTPPassword);
-						java.util.Properties config = new java.util.Properties();
-						config.put("StrictHostKeyChecking", "no");
-						FTPConnection.session.setConfig(config);
-						FTPConnection.session.connect();
-						FTPConnection.channel = FTPConnection.session.openChannel("sftp");
-						FTPConnection.channel.connect();
-						FTPConnection.channelSftp = (ChannelSftp)FTPConnection.channel;
-						FTPConnection.channelSftp.cd(mSettings.mFTPDir);
-					}	
-					else if(!mSettings.mSFTP && FTPConnection.client == null)
-					{
-						FTPConnection.client = new FTPClient();  
-						FTPConnection.client.connect(InetAddress.getByName(mSettings.mFTP), mSettings.mFTPPort);
-						
-						FTPConnection.client.login(mSettings.mFTPLogin, mSettings.mFTPPassword);
-						if(!FTPConnection.client.getReplyString().contains("230"))
-					    {
-					    	publishProgress("wrong ftp login response: " + FTPConnection.client.getReplyString() + "\nAre your credentials correct?");
-					    	MobileWebCam.LogE("wrong ftp login response: " + FTPConnection.client.getReplyString() + "\nAre your credentials correct?");
-					    	FTPConnection.session = null;
-					    	FTPConnection.client = null;
-					    	break ftpupload;
-					    }
+					FTPConnection.client = new FTPClient();  
+					FTPConnection.client.connect(InetAddress.getByName(mSettings.mFTP), mSettings.mFTPPort);
+					
+					FTPConnection.client.login(mSettings.mFTPLogin, mSettings.mFTPPassword);
+					if(!FTPConnection.client.getReplyString().contains("230"))
+				    {
+				    	publishProgress("wrong ftp login response: " + FTPConnection.client.getReplyString() + "\nAre your credentials correct?");
+				    	MobileWebCam.LogE("wrong ftp login response: " + FTPConnection.client.getReplyString() + "\nAre your credentials correct?");
+				    	FTPConnection.client = null;
+				    	break ftpupload;
+				    }
 
-						FTPConnection.client.changeWorkingDirectory(mSettings.mFTPDir);
-						if(!FTPConnection.client.getReplyString().contains("250"))
-					    {
-					    	publishProgress("wrong ftp cwd response: " + FTPConnection.client.getReplyString() + "\nIs the directory correct?");
-					    	MobileWebCam.LogE("wrong ftp cwd response: " + FTPConnection.client.getReplyString() + "\nIs the directory correct?");
-					    	FTPConnection.session = null;
-					    	FTPConnection.client = null;
-					    	break ftpupload;
-					    }
+					FTPConnection.client.changeWorkingDirectory(mSettings.mFTPDir);
+					if(!FTPConnection.client.getReplyString().contains("250"))
+				    {
+				    	publishProgress("wrong ftp cwd response: " + FTPConnection.client.getReplyString() + "\nIs the directory correct?");
+				    	MobileWebCam.LogE("wrong ftp cwd response: " + FTPConnection.client.getReplyString() + "\nIs the directory correct?");
+				    	FTPConnection.client = null;
+				    	break ftpupload;
+				    }
 
-						FTPConnection.client.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE);
+					FTPConnection.client.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE);
 
-				        if(mSettings.mFTPPassive)
-				        	FTPConnection.client.enterLocalPassiveMode();
-				        else
-				        	FTPConnection.client.enterLocalActiveMode();
-					}
+			        if(mSettings.mFTPPassive)
+			        	FTPConnection.client.enterLocalPassiveMode();
+			        else
+			        	FTPConnection.client.enterLocalActiveMode();
 					
 			        if(mSettings.mFTPKeepPics > 0)
 			        {
@@ -188,10 +159,7 @@ ftpupload:	{
 			        	{
 			        		try
 			        		{
-								if(mSettings.mSFTP)
-									FTPConnection.channelSftp.rename(replacename + i + ".jpg", replacename + (i + 1) + ".jpg");
-								else
-									FTPConnection.client.rename(replacename + i + ".jpg", replacename + (i + 1) + ".jpg");
+								FTPConnection.client.rename(replacename + i + ".jpg", replacename + (i + 1) + ".jpg");
 			        		}
 			        		catch(IOException e)
 			        		{
@@ -199,10 +167,7 @@ ftpupload:	{
 			        	}
 		        		try
 		        		{
-							if(mSettings.mSFTP)
-								FTPConnection.channelSftp.rename(mSettings.mDefaultname, replacename + "1.jpg");
-							else
-								FTPConnection.client.rename(mSettings.mDefaultname, replacename + "1.jpg");
+							FTPConnection.client.rename(mSettings.mDefaultname, replacename + "1.jpg");
 		        		}
 		        		catch(Exception e)
 		        		{
@@ -215,10 +180,7 @@ ftpupload:	{
 					do
 					{
 						// upload now
-						if(mSettings.mSFTP)
-							FTPConnection.channelSftp.put(buffIn, filename);
-						else
-							result = FTPConnection.client.storeFile(filename, buffIn);
+						result = FTPConnection.client.storeFile(filename, buffIn);
 				        buffIn.close();
 				        buffIn = null;
 				        
@@ -257,14 +219,11 @@ ftpupload:	{
 				        logIS = new ByteArrayInputStream(log.getBytes("UTF-8"));					
 						if(logIS != null)
 						{
-							if(mSettings.mSFTP)
-								FTPConnection.channelSftp.put(logIS, "log.txt");
-							else
-								result &= FTPConnection.client.storeFile("log.txt", logIS);
+							result &= FTPConnection.client.storeFile("log.txt", logIS);
 						}
 					}
 					
-			        if(result || mSettings.mSFTP)
+			        if(result)
 			        {
 				    	publishProgress("ok");
 				    	MobileWebCam.LogI("ok");
@@ -277,17 +236,9 @@ ftpupload:	{
 
 					if(!mSettings.mFTPKeepConnected)
 					{
-						if(mSettings.mSFTP)
-						{
-							FTPConnection.channelSftp.disconnect();
-							FTPConnection.session = null;
-						}
-						else
-						{
-							FTPConnection.client.logout();
-							FTPConnection.client.disconnect();
-							FTPConnection.client = null;
-						}
+						FTPConnection.client.logout();
+						FTPConnection.client.disconnect();
+						FTPConnection.client = null;
 					}
 				}
 			}
@@ -296,7 +247,6 @@ ftpupload:	{
 				e.printStackTrace();
 				publishProgress("Ftp socket exception!");
 				MobileWebCam.LogE("Ftp socket exception!");
-				FTPConnection.session = null;
 				FTPConnection.client = null;
 			}
 			catch (UnknownHostException e)
@@ -304,7 +254,6 @@ ftpupload:	{
 				e.printStackTrace();
 				publishProgress("Unknown ftp host!");
 				MobileWebCam.LogE("Unknown ftp host!");
-				FTPConnection.session = null;
 				FTPConnection.client = null;
 			}
 			catch (IOException e)
@@ -320,43 +269,11 @@ ftpupload:	{
 					publishProgress("ftp IOException");
 					MobileWebCam.LogE("ftp IOException");
 				}
-				FTPConnection.session = null;
-				FTPConnection.client = null;
-			}
-			catch (JSchException e)
-			{
-				if(e.getMessage() != null)
-				{
-					publishProgress("IOException: sftp\n" + e.getMessage());
-					MobileWebCam.LogE("IOException: sftp\n" + e.getMessage());
-				}
-				else
-				{
-					publishProgress("sftp IOException");
-					MobileWebCam.LogE("sftp IOException");
-				}
-				FTPConnection.session = null;
-				FTPConnection.client = null;
-			}
-			catch (SftpException e)
-			{
-				if(e.getMessage() != null)
-				{
-					publishProgress("IOException: sftp\n" + e.getMessage());
-					MobileWebCam.LogE("IOException: sftp\n" + e.getMessage());
-				}
-				else
-				{
-					publishProgress("sftp IOException");
-					MobileWebCam.LogE("sftp IOException");
-				}
-				FTPConnection.session = null;
 				FTPConnection.client = null;
 			}
 			catch (NullPointerException e)
 			{
 				MobileWebCam.LogE("NullPointerException:\n" + e.getMessage());
-				FTPConnection.session = null;
 				FTPConnection.client = null;
 			}
 		}
