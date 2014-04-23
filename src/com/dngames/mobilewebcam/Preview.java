@@ -343,7 +343,7 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback, ITex
 	public static boolean CheckInTime(Date date, String starttime, String endtime, boolean night)
 	{
 		if(starttime.equals(endtime))
-			return true;
+			return !night;
 		
 		int cur_dayminutes = date.getHours() * 60 + date.getMinutes();
 		if(night)
